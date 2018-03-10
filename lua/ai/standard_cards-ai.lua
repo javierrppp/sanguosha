@@ -953,7 +953,7 @@ sgs.ai_card_intention.Peach = function(self, card, from, tos)
 	end
 end
 
-sgs.ai_use_value.Peach = 17
+sgs.ai_use_value.Peach = 7
 sgs.ai_keep_value.Peach = 7
 sgs.ai_use_priority.Peach = 10.9
 

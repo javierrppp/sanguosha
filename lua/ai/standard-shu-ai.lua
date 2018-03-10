@@ -319,10 +319,12 @@ function sgs.ai_cardneed.jizhi(to, card)
 end
 
 sgs.jizhi_keep_value = {
-	Peach       = 6,
-	Analeptic   = 5.9,
-	Jink        = 5.8,
-	ExNihilo    = 5.7,
+	Peach       = 6.2,
+	Analeptic   = 6.1,
+	Jink        = 6,
+	ExNihilo    = 5.9,
+	BefriendAttacking = 5.8,
+	AwaitExhausted = 5.7,
 	Snatch      = 5.7,
 	Dismantlement = 5.6,
 	IronChain   = 5.5,
