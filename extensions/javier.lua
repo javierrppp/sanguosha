@@ -38,13 +38,17 @@ masu = sgs.General(extension, "masu", "shu","3")
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 
 --**********加强包**********-----
+
 caocao = sgs.General(extension1, "caocao", "wei","4",true,false,false) 
 weiyan = sgs.General(extension1, "weiyan", "shu","4",true,false,false)
 
 --**********猛包**********-----
+
 meng_zhaoyun = sgs.General(extension2, "meng_zhaoyun", "shu","3")
+meng_luxun = sgs.General(extension2, "meng_luxun", "wu","3")
 
 --===========================================函数区============================================--
+
 local sendMsg = function(room,message)
 	local msg = sgs.LogMessage()
 	msg.type = "#message"
@@ -4072,7 +4076,7 @@ yajiao = sgs.CreateTriggerSkill{
 			for _, id in ipairs(card_to_obtain) do
 				dummy2:addSubcard(id)
 			end
-			room:obtainCard(player, dummy2)
+			room:obtainCard(player, dummy2,true)
 		end
 		if #card_to_obtain > x/2 then
 			player:turnOver()
@@ -4142,6 +4146,117 @@ chongzhen = sgs.CreateTriggerSkill{
 }
 meng_zhaoyun:addSkill(yajiao)
 meng_zhaoyun:addSkill(chongzhen)
+
+-----陆伯言-----
+
+shaoying = sgs.CreateTriggerSkill{
+	name = "shaoying",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart, sgs.Damage},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Start then
+				return self:objectName()
+			end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if damage.nature == sgs.DamageStruct_Fire and not damage.to:getNextAlive(1):isKongcheng() then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if event == sgs.EventPhaseStart then
+			local targets = sgs.SPlayerList()
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if not p:isKongcheng() then
+					targets:append(p)
+				end
+			end
+			local to = room:askForPlayerChosen(player, targets, self:objectName(), "shaoying-invoke", true, true)
+			if to then
+				room:setPlayerProperty(player, "shaoyingProp", sgs.QVariant(to:objectName()))
+				return true
+			end
+		else
+			if room:askForSkillInvoke(player,self:objectName(),data) then
+				return true
+			end
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		room:notifySkillInvoked(player, self:objectName())
+		local to
+		if event == sgs.EventPhaseStart then
+			objectName = player:property("shaoyingProp"):toString()
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:objectName() == objectName then
+					to = p 
+					break
+				end
+			end
+			room:setPlayerProperty(player, "shaoyingProp", sgs.QVariant())
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			to = damage.to:getNextAlive(1)
+		end
+		local fire_attack = sgs.Sanguosha:cloneCard("fire_attack", sgs.Card_NoSuit, 0)
+		fire_attack:setSkillName("shaoying")
+		local card_use = sgs.CardUseStruct()
+		card_use.from = player
+		card_use.to:append(to)
+		card_use.card = fire_attack
+		room:useCard(card_use, false)
+		return false
+	end
+}
+linggong = sgs.CreateTriggerSkill{
+	name = "linggong",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart, sgs.Damage},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Start then
+				room:setPlayerProperty(player, "linggongProp", sgs.QVariant(0))
+			elseif player:getPhase() == sgs.Player_Finish then
+				local num = player:property("linggongProp"):toInt()
+				if num > 0 then
+					return self:objectName()
+				end
+			end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if damage.nature == sgs.DamageStruct_Fire then
+				local num = player:property("linggongProp"):toInt()
+				room:setPlayerProperty(player, "linggongProp", sgs.QVariant(num + 1))
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(player,self:objectName(),data) then
+			return true
+		end
+		room:setPlayerProperty(player, "linggongProp", sgs.QVariant(0))
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		local num = player:property("linggongProp"):toInt()
+		if num > 3 then num = 3 end
+		player:drawCards(num)
+		room:setPlayerProperty(player, "linggongProp", sgs.QVariant(0))
+		return false
+	end,
+	priority = 100
+}
+meng_luxun:addSkill(shaoying)
+meng_luxun:addSkill(linggong)
 
 --===========================================珠联璧合区============================================--
 
@@ -4414,6 +4529,12 @@ sgs.LoadTranslationTable{
 	[":yajiao"] = "锁定技，你的回合结束后，你获得牌堆顶x张牌中的所有的【杀】（x为存活角色数），然后若你获得的【杀】个数大于x/2，你将武将牌叠置。",
 	["chongzhen"] = "冲阵",
 	[":chongzhen"] = "当你使用【杀】/成为【杀】的目标时，你可以弃置一张比此【杀】点数大的基本牌令此【杀】不可被闪避/对你无效。",
+	["meng_luxun"] = "陆伯言",
+	["#meng_luxun"] = "江陵侯",
+	["shaoying"] = "烧营",
+	[":shaoying"] = "你的回合开始时，你可以视为对一名角色使用一张【火攻】。锁定技，当你对一名角色造成火属性伤害后，你可以视为对其下家使用一张【火攻】（若其有手牌）。",
+	["linggong"] = "领功",
+	[":linggong"] = "你的回合结束后，你可以摸x张牌（x为你此回合造成火属性伤害的次数，且最多不超过3）。",
 -----msg-----
 	["#yaowu"] = "%from 发动技能“耀武”，此次伤害无效。",
 -----invoke-----
@@ -4447,6 +4568,7 @@ sgs.LoadTranslationTable{
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
+	["shaoying-invoke"] = "你可以指定一名角色，视为对其使用一张【火攻】",
 -----exchange-----
 	["tuifengPush"] = "您可以将一张牌当作“锋”置于武将牌上",
 -----choice-----

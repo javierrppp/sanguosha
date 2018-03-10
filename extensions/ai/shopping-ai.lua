@@ -283,10 +283,11 @@ sgs.ai_skill_playerchosen["shopSlash"] = function(self, targets)
 	local room = source:getRoom()
 	local enemy_isWeak = false
 	for _, p in sgs.qlist(targets) do
-		if self:isFriend(p) then continue end
-		if p:isKongcheng() and p:hasShownSkill("kongcheng") then continue end
-		if (self:isWeak(p) or p:isKongcheng()) then
-			return p
+		if self:isEnemy(p) then
+			if p:isKongcheng() and p:hasShownSkill("kongcheng") then continue end
+			if (self:isWeak(p) or p:isKongcheng()) then
+				return p
+			end
 		end
 	end
 	return "."

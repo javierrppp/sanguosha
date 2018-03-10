@@ -23,6 +23,7 @@ end
 -----马谡-----
 
 sgs.ai_skill_invoke.sanyao = function(self, data)
+	local source = self.player
 	local room = source:getRoom()
 	if self:isEnemy(room:getCurrent()) and room:getCurrent():hasShownSkill("buqu") and room:getCurrent():getHp() == 0 then
 		return false
@@ -2784,6 +2785,7 @@ end
 
 --**********加强包**********-----
 
+-----赵子龙-----
 sgs.ai_skill_invoke.yajiao = function(self, data)
     return true
 end
@@ -2841,4 +2843,69 @@ sgs.ai_skill_cardask["@chongzhen2"] = function(self, data, pattern, target, targ
 			return card:toString()
 		end
 	end
+end
+
+-----陆伯言-----
+
+sgs.ai_skill_invoke.linggong = function(self, data)
+    return true
+end
+sgs.ai_skill_invoke.shaoying = function(self, data)
+    local room = self.player:getRoom()
+	local damage = data:toDamage()
+	if self:isEnemy(damage.to:getNextAlive(1)) then
+		return true
+	end
+	return false
+end
+sgs.ai_skill_playerchosen["shaoying"] = function(self, targets) 
+    local source = self.player
+	local room = source:getRoom()
+	local to = {}
+	local candidate
+	for _, p in sgs.qlist(targets) do
+		if not p:isKongcheng() then
+			if self:isEnemy(p) and p:getEquip(1) and p:getEquip(1):isKindOf("Vine") then
+				if candidate then
+					if candidate:getHp() > p:getHp() then
+						candidate = p
+					end
+				else
+					candidate = p
+				end
+			end
+		end
+	end
+	if not candidate then
+		for _, p in sgs.qlist(targets) do
+			if not p:isKongcheng() then
+				if self:isEnemy(p) and (self:isEnemy(p:getNextAlive(1)) and not p:getNextAlive(1):isKongcheng()) and (self:isEnemy(p:getNextAlive(2)) and not p:getNextAlive(2):isKongcheng()) then
+					candidate = p 
+					break
+				end
+			end
+		end
+	end
+	if not candidate then
+		for _, p in sgs.qlist(targets) do
+			if not p:isKongcheng() then
+				if self:isEnemy(p) and (self:isEnemy(p:getNextAlive(1)) and not p:getNextAlive(1):isKongcheng()) then
+					candidate = p 
+					break
+				end
+			end
+		end
+	end
+	if not candidate then
+		for _, p in sgs.qlist(targets) do
+			if not p:isKongcheng() then
+				if self:isEnemy(p) then
+					candidate = p 
+					break
+				end
+			end
+		end
+	end
+	table.insert(to,candidate)
+	return to
 end
