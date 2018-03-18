@@ -130,7 +130,7 @@ yitian = sgs.CreateTriggerSkill{
 		if not card then return "" end
 		if card:objectName() == "yitianjian" then
 			local use = data:toCardUse()
-			if use.from:objectName() == player:objectName() and use.card:isKindOf("Slash") then 
+			if use.from and use.from:objectName() == player:objectName() and use.card:isKindOf("Slash") then 
 				local jink_list = player:getTag("Jink_"..use.card:toString()):toList()
 				for _, p in sgs.qlist(use.to) do
 					local index = use.to:indexOf(p)

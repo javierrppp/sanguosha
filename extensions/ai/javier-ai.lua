@@ -14,6 +14,113 @@ end
 
 --**********智包**********-----
 
+-----曹操·君-----
+
+local isLiangjiang = function(player) --判断该武将是不是五良将
+	if player:getRole() == "careerist" then return false end
+	local is = false
+	if player:getGeneralName() == "yujin" or player:getGeneralName() == "yuejin" or player:getGeneralName() == "xuhuang" or player:getGeneralName() == "zhangliao" or player:getGeneralName() == "zhanghe"  then
+		is = true
+	end
+	if not is and player:getGeneralName() ~= "guojia" and player:getGeneralName() ~= "xunyu" and player:getGeneralName() ~= "chengyu" and player:getGeneralName() ~= "jiaxu" and player:getGeneralName() ~= "xunyou" then
+		if player:getGeneral2Name() == "yujin" or player:getGeneral2Name() == "yuejin" or player:getGeneral2Name() == "xuhuang" or player:getGeneral2Name() == "zhangliao" or player:getGeneral2Name() == "zhanghe"  then
+			is = true
+		end
+	end
+	return is
+end
+local isMouchen = function(player) --判断该武将是不是五谋臣
+	if player:getRole() == "careerist" then return false end
+	local is = false
+	if player:getGeneralName() == "guojia" or player:getGeneralName() == "xunyu" or player:getGeneralName() == "chengyu" or player:getGeneralName() == "jiaxu" or player:getGeneralName() == "xunyou"  then
+		is = true
+	end
+	if not is and player:getGeneralName() ~= "yujin" and player:getGeneralName() ~= "yuejin" and player:getGeneralName() ~= "xuhuang" and player:getGeneralName() ~= "zhangliao" and player:getGeneralName() ~= "zhanghe" then
+		if player:getGeneral2Name() == "guojia" or player:getGeneral2Name() == "xunyu" or player:getGeneral2Name() == "chengyu" or player:getGeneral2Name() == "jiaxu" or player:getGeneral2Name() == "xunyou"  then
+			is = true
+		end
+	end
+	return is
+end
+sgs.ai_skill_playerchosen.mouduan = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	local candidate
+	local data = source:property("mouduanSelectProp")
+	local damage = data:toDamage()
+	if self:isEnemy(damage.from) then
+		if damage.from:getEquip(1) and damage.from:getEquip(1):isKindOf("Vine") then   --利用火杀
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:getRole() ~= "careerist" and p:getKingdom() == "wei" and isLiangjiang(p) then
+					if p:getEquip(0) and p:getEquip(0):isKindOf("Fan") then
+						candidate = p
+						break
+					end
+				end
+			end
+		end
+		if source:getRole() ~= "careerist" and damage.from:getHp() == 1 and not damage.from:hasShownSkill("buqu") and (not damage.from:getEquip(1) or (damage.from:getEquip(1) and not damage.from:getEquip(1):isKindOf("Vine"))) then
+			local shu = 0 local wei = 0 local wu = 0 local qun = 0     --利用飞龙夺凤收拾残血角色
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:getKingdom() == "shu" and p:getRole() ~= "careerist" then shu = shu + 1
+				elseif p:getKingdom() == "wei" and p:getRole() ~= "careerist" then wei = wei + 1
+				elseif p:getKingdom() == "wu" and p:getRole() ~= "careerist" then wu = wu + 1
+				elseif p:getKingdom() == "qun" and p:getRole() ~= "careerist" then qun = qun + 1
+				end
+			end
+			if wei < shu and wei < wu and wei < qun then
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if p:getRole() ~= "careerist" and p:getKingdom() == "wei" and isLiangjiang(p) then
+						if p:getEquip(0) and p:getEquip(0):isKindOf("DragonPhoenix") then
+							return p
+						end
+					end
+				end
+			end
+		end
+	end
+	local max_cardNum = 0
+	local friend_candidate
+	for _, p in sgs.qlist(room:getAlivePlayers()) do
+		if p:getRole() ~= "careerist" and p:getKingdom() == "wei" and isMouchen(p) and room:getCurrent():objectName() ~= p:objectName() then
+			if p:getHandcardNum() > max_cardNum then
+				friend_candidate = p
+				max_cardNum = p:getHandcardNum()
+			end
+		end
+	end
+	if max_cardNum <= 3 and candidate then return candidate
+	elseif friend_candidate then return friend_candidate
+	end
+	return nil
+end
+local xietian_skill = {}
+xietian_skill.name = "xietian"
+table.insert(sgs.ai_skills, xietian_skill)
+xietian_skill.getTurnUseCard = function(self, inclusive)
+	local cards = {}
+	cards = sgs.QList2Table(self.player:getCards("he"))
+	self:sortByUseValue(cards, true)
+	local need_card
+	for _, card in ipairs(cards) do
+		if card:getSuit() == sgs.Card_Heart and card:getNumber() == 2 then 
+			need_card = card
+		end
+	end
+	if need_card then
+		local suit = need_card:getSuitString()
+		local number = need_card:getNumberString()
+		local card_id = need_card:getEffectiveId()
+		local card_str = ("threaten_emperor:xietian[%s:%s]=%d%s"):format(suit, number, card_id, "&xietian")
+		local threaten_emperor = sgs.Card_Parse(card_str)
+		assert(threaten_emperor)
+		return threaten_emperor
+	end
+end
+function sgs.ai_cardneed.xietian(to, card)
+	return card:getSuit() == sgs.Card_Heart and card:getNumber() == 2
+end
+
 -----刘表-----
 
 sgs.ai_skill_invoke.gushou = function(self, data)
@@ -1814,7 +1921,7 @@ sgs.ai_skill_playerchosen.shouguan = function(self, targets)
 	local source = self.player
 	local room = source:getRoom()
 	for _, p in sgs.qlist(targets) do
-		if p:hasShownSkill("qixi") then
+		if p:hasShownSkill("xietian") then
 			return p 
 		end
 	end
@@ -2370,7 +2477,7 @@ sgs.ai_skill_use_func["#shefuCard"] = function(card, use, self)
 	local daqiao,ganning,xuhuang,guanyu,zhenji,wolong,fengchu,shuangtou,yuanshao,luxun,yuxi = nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil
 	for _, p in sgs.qlist(room:getOtherPlayers(source)) do
 		if p:hasShownSkill("guose") and self:isEnemy(p) then daqiao = p end
-		if p:hasShownSkill("qixi") and self:isEnemy(p) then ganning = p end
+		if p:hasShownSkill("xietian") and self:isEnemy(p) then ganning = p end
 		if p:hasShownSkill("duanliang") and self:isEnemy(p) then xuhuang = p end
 		if p:hasShownSkill("qingguo") and self:isEnemy(p) then zhenji = p end
 		if p:hasShownSkill("wusheng") and self:isEnemy(p) then guanyu = p end
@@ -2908,4 +3015,41 @@ sgs.ai_skill_playerchosen["shaoying"] = function(self, targets)
 	end
 	table.insert(to,candidate)
 	return to
+end
+
+-----古之恶来-----
+
+sgs.ai_use_value.tiequCard = 17
+sgs.ai_use_priority.tiequCard = 16.62
+local tiequ_skill = {}
+tiequ_skill.name = "tiequ"
+table.insert(sgs.ai_skills, tiequ_skill)
+tiequ_skill.getTurnUseCard = function(self)
+	if not self:willShowForAttack() then return nil end
+	if self.player:getHp() == 0 then return nil end
+	if not self.player:hasUsed("#tiequCard") then
+		return sgs.Card_Parse("#tiequCard:.:&tiequ")
+	end
+end
+sgs.ai_skill_use_func["#tiequCard"] = function(card, use, self)
+	local source = self.player
+	if source:getHp() == 1 then return false end
+	if source:getHp() == 2 and source:getEquip(1) then
+		local need_help = false
+		if source:hasSkill("fangzhu") then
+			for _, p in pairs(self.friends) do
+				if not p:faceUp() then
+					need_help = true
+				end
+			end
+		end
+		if not need_help then return false end
+	end
+	if source:getHp() == 3 and source:getEquip(0) and source:getEquip(1) then
+		if not source:hasSkill("fangzhu") and not source:hasSkill("yiji") and not source:hasSkill("jieming") then
+			return false
+		end
+	end
+	if source:getEquip(0) and source:getEquip(1) and source:getEquip(2) and source:getEquip(3) and source:getEquip(4) then return false end
+	use.card = card
 end
