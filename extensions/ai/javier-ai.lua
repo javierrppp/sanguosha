@@ -457,7 +457,7 @@ end
 sgs.ai_skill_invoke.jiaoxie = function(self, data)
 	local target = data:toPlayer()
 	if self:isFriend(target) then
-		if target:getEquip(1) and target:getEquip(1):isKingOf("SilverLion") and target:isWounded() then return true end
+		if target:getEquip(1) and target:getEquip(1):isKindOf("SilverLion") and target:isWounded() then return true end
 	end
 	return self:isEnemy(data:toPlayer())
 end
@@ -3052,4 +3052,143 @@ sgs.ai_skill_use_func["#tiequCard"] = function(card, use, self)
 	end
 	if source:getEquip(0) and source:getEquip(1) and source:getEquip(2) and source:getEquip(3) and source:getEquip(4) then return false end
 	use.card = card
+end
+
+-----董仲颖-----
+sgs.ai_use_value.huangyinCard = 17
+sgs.ai_use_priority.huangyinCard = 16.62
+local huangyin_skill = {}
+huangyin_skill.name = "huangyin"
+table.insert(sgs.ai_skills, huangyin_skill)
+huangyin_skill.getTurnUseCard = function(self)
+	if not self:willShowForAttack() then return nil end
+	if self.player:getHp() == 0 then return nil end
+	if not self.player:hasUsed("#huangyinCard") then
+		return sgs.Card_Parse("#huangyinCard:.:&huangyin")
+	end
+end
+sgs.ai_skill_use_func["#huangyinCard"] = function(card, use, self)
+	local source = self.player
+	local room = self.room
+	local to 
+	if self.player:hasSkill("juece") and not self:isWeak() then
+		for _, p in sgs.qlist(room:getOtherPlayers(self.player)) do
+			if p:isFemale() and self:isEnemy(p) then
+				if not to then
+					to = p 
+				else
+					if not p:isKongcheng() and  p:getHandcardNum() < to:getHandcardNum() then
+						to = p 
+					end
+				end
+			end
+		end
+		if not to then
+			for _, p in sgs.qlist(room:getOtherPlayers(self.player)) do
+				if p:isFemale() and self:isEnemy(p) then
+					if not to then
+						to = p 
+					else
+						if p:getHandcardNum() > to:getHandcardNum() then
+							to = p 
+						end
+					end
+				end
+			end
+		end
+	else
+		for _, p in sgs.qlist(room:getOtherPlayers(self.player)) do
+			if p:isFemale() and self:isEnemy(p) then
+				if not to then
+					to = p 
+				else
+					if p:getHandcardNum() > to:getHandcardNum() then
+						to = p 
+					end
+				end
+			end
+		end
+	end
+	local targets = sgs.SPlayerList()
+	if to then
+		targets:append(to)
+	end
+	if targets:length() == 1 then
+		use.card = card
+		if use.to then use.to = targets end
+	end
+end
+
+--[[sgs.ai_use_value.huangyinCard = 10
+sgs.ai_use_priority.huangyinCard = 10
+huangyin_skill = {}
+huangyin_skill.name = "huangyin"
+table.insert(sgs.ai_skills, huangyin_skill)
+huangyin_skill.getTurnUseCard = function(self,inclusive)
+	if not self.player:hasUsed("#huangyinCard") then
+		return sgs.Card_Parse("#huangyinCard:.:&huangyin")
+	end
+end
+sgs.ai_skill_use_func["#huangyinCard"] = function(card, use, self)
+	local source = self.player
+	local room = source:getRoom()
+	local to 
+	if self.player:hasSkill("juece") and not self:isWeak() then
+		for _, p in sgs.qlist(room:getOtherPlayers(self.player)) do
+			if self.isEnemy(p) then
+				if not to then
+					to = p 
+				else
+					if p:getHandcardNum() < to:getHandcardNum() then
+						to = p 
+					end
+				end
+			end
+		end
+	else
+		for _, p in sgs.qlist(room:getOtherPlayers(self.player)) do
+			if self.isEnemy(p) then
+				if not to then
+					to = p 
+				else
+					if p:getHandcardNum() > to:getHandcardNum() then
+						to = p 
+					end
+				end
+			end
+		end
+	end
+	local targets = sgs.SPlayerList()
+	if to then
+		targets:append(to)
+	end
+	if targets:length() == 1 then
+		use.card = card
+		if use.to then use.to = targets end
+	end
+end]]--
+sgs.ai_skill_playerchosen["weishe"] = function(self, targets) 
+    local source = self.player
+	local to
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) and (not p:getEquip(1) or (p:getEquip(1) and (not p:getEquip(1):isKindOf("SilverLion") or (p:getEquip(1) and p:getEquip(1):isKindOf("SilverLion") and not p:isWounded())))) then
+			if not to then
+				to = p
+			else
+				if p:getHandcardNum() < to:getHandcardNum() then
+					to = p 
+				end
+			end
+		end
+	end
+	if to then
+		return to
+	else
+		for _, p in sgs.qlist(targets) do
+		if self:isFriend(p) and p:isWounded() and p:getEquip(1) and p:getEquip(1):isKindOf("SilverLion") then
+			return p
+		end
+	end
+	end
+	return nil
 end

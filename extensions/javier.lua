@@ -34,7 +34,7 @@ caimao = sgs.General(extension, "caimao", "qun","4")
 hejin  = sgs.General(extension, "hejin", "qun","4")
 miheng  = sgs.General(extension, "miheng", "qun","3")
 masu = sgs.General(extension, "masu", "shu","3")
-maliang = sgs.General(extension, "maliang", "shu","3")
+--maliang = sgs.General(extension, "maliang", "shu","3")
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -49,6 +49,7 @@ weiyan = sgs.General(extension1, "weiyan", "shu","4",true,false,false)
 meng_zhaoyun = sgs.General(extension2, "meng_zhaoyun", "shu","3")
 meng_luxun = sgs.General(extension2, "meng_luxun", "wu","3")
 meng_dianwei = sgs.General(extension2, "meng_dianwei", "wei","4")
+meng_dongzhuo = sgs.General(extension2, "meng_dongzhuo", "qun","4")
 
 --===========================================函数区============================================--
 
@@ -140,7 +141,7 @@ end
 
 -----马良-----
 
-zishu = sgs.CreateTriggerSkill{
+--[[zishu = sgs.CreateTriggerSkill{
 	name = "zishu",
 	frequency = sgs.Skill_NotFrequent, 
 	events = {sgs.EventPhaseStart},
@@ -327,7 +328,7 @@ yingyuan = sgs.CreateTriggerSkill{
 	end
 }
 maliang:addSkill(zishu)
-maliang:addSkill(yingyuan)
+maliang:addSkill(yingyuan)--]]
 
 -----君主·曹操-----
 
@@ -3287,7 +3288,6 @@ gushou_trigger = sgs.CreateTriggerSkill{
 	events = {sgs.EventPhaseStart},
 	can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill("gushou")) then return "" end
-		sendMsg(room,"fff")
 		if player:getPhase() == sgs.Player_Discard and player:getHandcardNum() > player:getMaxCards() and player:isWounded() then
 			sendMsg(room,"rrr")	
 			if not player:hasShownSkill("gushou") and room:askForSkillInvoke(player, "gushou", data) then
@@ -4807,6 +4807,103 @@ tiequ = sgs.CreateZeroCardViewAsSkill{
 meng_dianwei:addSkill(hengsao)
 meng_dianwei:addSkill(tiequ)
 
+-----董仲颖-----
+
+huangyinCard = sgs.CreateSkillCard{
+	name = "huangyinCard",
+	skill_name = "huangyin",
+	target_fixed = false,
+	will_throw = false,
+	handling_method = sgs.Card_MethodNone,
+	mute = true,
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() then
+			return false
+		elseif not to_select:isFemale() then
+			return false
+		elseif #targets == 0 then
+			return true
+		end
+		return false
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		local to = targets[1]
+		room:askForDiscard(to, self:objectName(), 1, 1, false, true)
+		if to:getHandcardNum() > source:getHandcardNum() then
+			local recover = sgs.RecoverStruct()
+			recover.who = source
+			room:recover(source, recover)
+		end
+	end
+}
+huangyin = sgs.CreateZeroCardViewAsSkill{   
+	name = "huangyin",
+	view_as = function(self)
+		local skillcard = huangyinCard:clone()
+		skillcard:setSkillName(self:objectName())
+		skillcard:setShowSkill(self:objectName())
+		return skillcard
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#huangyinCard")
+	end,
+}
+
+weishe = sgs.CreateTriggerSkill{
+	name = "weishe",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.TargetConfirmed},
+	can_trigger = function(self, event, room, player, data)
+		if event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if not (use.card:isKindOf("Slash") or (use.card:isNDTrick() and use.card:isBlack())) then return "" end
+			if player and player:hasSkill(self:objectName()) and not player:isDead() and use.from:objectName() == player:objectName() and use.to:length() > 0 then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local use = data:toCardUse()
+		local targets = sgs.SPlayerList()
+		for _, p in sgs.qlist(use.to) do
+			if not p:isNude() then
+				targets:append(p)
+			end
+		end
+		if targets:length() > 0 then
+			local to = room:askForPlayerChosen(player, targets, self:objectName(), "weishe-invoke", true, true)
+			if to then
+				room:setPlayerProperty(player, "weisheProp", sgs.QVariant(to:objectName()))
+				return true
+			end
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		room:notifySkillInvoked(player, self:objectName())
+		local to
+		objectName = player:property("weisheProp"):toString()
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p:objectName() == objectName then
+				to = p 
+				break
+			end
+		end
+		room:setPlayerProperty(player, "weisheProp", sgs.QVariant())
+		if to then
+			room:askForDiscard(to, self:objectName(), 1, 1, false, true)
+		end
+		return false
+	end
+} 
+meng_dongzhuo:addSkill(huangyin)
+meng_dongzhuo:addSkill(weishe)
+
 --===========================================珠联璧合区============================================--
 
 --**********智包**********-----
@@ -4817,12 +4914,13 @@ huaxiong:addCompanion("panfeng")
 bulianshi:addCompanion("sunquan")
 zhangchunhua:addCompanion("simayi")
 liru:addCompanion("dongzhuo")
+liru:addCompanion("meng_dongzhuo")
 liyan:addCompanion("zhugeliang")
 zumao:addCompanion("sunjian")
 zhoucang:addCompanion("guanyu")
 caimao:addCompanion("liubiao")
 hejin:addCompanion("hetaihou")
-maliang:addCompanion("masu")
+--maliang:addCompanion("masu")
 
 --**********猛包**********-----
 
@@ -5107,6 +5205,12 @@ sgs.LoadTranslationTable{
 	[":hengsao"] = "锁定技，若你装备了武器，你使用【杀】指定的角色数至多为x（x为你武器的攻击范围）。",
 	["tiequ"] = "铁躯",
 	[":tiequ"] = "出牌阶段限一次，你可以自减一点体力，然后随机装备一张牌堆中你对应装备区没有的装备。",
+	["meng_dongzhuo"] = "董仲颖",
+	["#meng_dongzhuo"] = "西凉鬼豪",
+	["huangyin"] = "荒淫",
+	[":huangyin"] = "出牌阶段限一次，你可以指定一名女性角色，其需弃置一张牌，然后若此时其手牌数大于你，你回复一点体力。",
+	["weishe"] = "威慑",
+	[":weishe"] = "你使用【杀】或黑色锦囊牌指定目标后，可以令其中一名角色弃置一张牌。",
 -----msg-----
 	["#yaowu"] = "%from 发动技能“耀武”，此次伤害无效。",
 -----invoke-----
@@ -5139,6 +5243,7 @@ sgs.LoadTranslationTable{
 	["@shejian"] = "请展示一张手牌",
 	["@benyu-discard"] = "你可以弃置手牌对伤害来源造成一点伤害",
 	["mouduan-invoke"] = "你可以指定一名五良将或五谋臣",
+	["weishe-invoke"] = "你可以指定一名目标角色，对其发动“威慑”。",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
