@@ -737,7 +737,7 @@ extension:insertRelatedSkills("kuangcai","#kuangcai_usecard")
 
 mouzhu = sgs.CreateTriggerSkill{
 	name = "mouzhu",
-	frequency = sgs.Skill_Frequent,
+	frequency = sgs.Skill_Compulsory,
 	events = {sgs.BuryVictim},
 	can_trigger = function(self, event, room, player, data)
 		local death = data:toDeath()
