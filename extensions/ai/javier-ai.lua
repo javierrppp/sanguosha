@@ -2874,7 +2874,8 @@ sgs.ai_skill_invoke.Ejianxiong = function(self, data)
 end
 sgs.ai_skill_choice["Ejianxiong"] = function(self, choices, data)
 	local damage = data:toDamage()
-	if damage.card:isKindOf("Slash") and self:getCardsNum("Slash") > 0 then
+	if not damage.card then return "draw1" end
+	if damage.card and damage.card:isKindOf("Slash") and self:getCardsNum("Slash") > 0 then
 		return "draw1"
 	end
 	if damage.card:isKindOf("ArcheryAttack") or damage.card:isKindOf("SavageAssault") then
