@@ -3119,55 +3119,6 @@ sgs.ai_skill_use_func["#huangyinCard"] = function(card, use, self)
 		if use.to then use.to = targets end
 	end
 end
-
---[[sgs.ai_use_value.huangyinCard = 10
-sgs.ai_use_priority.huangyinCard = 10
-huangyin_skill = {}
-huangyin_skill.name = "huangyin"
-table.insert(sgs.ai_skills, huangyin_skill)
-huangyin_skill.getTurnUseCard = function(self,inclusive)
-	if not self.player:hasUsed("#huangyinCard") then
-		return sgs.Card_Parse("#huangyinCard:.:&huangyin")
-	end
-end
-sgs.ai_skill_use_func["#huangyinCard"] = function(card, use, self)
-	local source = self.player
-	local room = source:getRoom()
-	local to 
-	if self.player:hasSkill("juece") and not self:isWeak() then
-		for _, p in sgs.qlist(room:getOtherPlayers(self.player)) do
-			if self.isEnemy(p) then
-				if not to then
-					to = p 
-				else
-					if p:getHandcardNum() < to:getHandcardNum() then
-						to = p 
-					end
-				end
-			end
-		end
-	else
-		for _, p in sgs.qlist(room:getOtherPlayers(self.player)) do
-			if self.isEnemy(p) then
-				if not to then
-					to = p 
-				else
-					if p:getHandcardNum() > to:getHandcardNum() then
-						to = p 
-					end
-				end
-			end
-		end
-	end
-	local targets = sgs.SPlayerList()
-	if to then
-		targets:append(to)
-	end
-	if targets:length() == 1 then
-		use.card = card
-		if use.to then use.to = targets end
-	end
-end]]--
 sgs.ai_skill_playerchosen["weishe"] = function(self, targets) 
     local source = self.player
 	local to
@@ -3193,3 +3144,419 @@ sgs.ai_skill_playerchosen["weishe"] = function(self, targets)
 	end
 	return nil
 end
+
+-----薛综-----
+
+sgs.ai_skill_invoke["funan"] = function(self, data)
+	local to
+	local objectName = self.player:property("funanToProp"):toString()
+	for _, p in sgs.qlist(self.room:getAlivePlayers()) do 
+		if p:objectName() == objectName then
+			to = p 
+			break
+		end
+	end
+	local card_id = self.player:property("funanCardProp"):toInt()
+	local card = sgs.Sanguosha:getCard(card_id)
+	if self:isFriend(to) then
+		return true
+	else
+		if self:getCardsNum("Jink") < self.player:getMaxCards() and self:isWeak(self.player) and card:isKindOf("Jink") then
+			return true
+		end
+	end
+	if self.player:getMark("funanMark") > 0 then return true end
+	return false
+end
+sgs.ai_skill_playerchosen["jiexun"] = function(self, targets) 
+	local source = self.player
+	local room = self.room
+	local num = source:getMark("@xun")
+	local diamonds_num = 0
+	local to_friend = false
+	local to_enemy = false
+	local discard_num = num - diamonds_num
+	for _, p in sgs.qlist(room:getAlivePlayers()) do
+		for _, c in sgs.qlist(p:getJudgingArea()) do
+			if c:getSuit() == sgs.Card_Diamond then
+				diamonds_num = diamonds_num + 1
+			end
+		end
+		for _, c in sgs.qlist(p:getEquips()) do
+			if c:getSuit() == sgs.Card_Diamond then
+				diamonds_num = diamonds_num + 1
+			end
+		end
+	end
+	if diamonds_num >= num then
+		to_friend = true
+	elseif diamonds_num < num and diamonds_num < 2 then
+		to_enemy = true
+	elseif diamonds_num < num and diamonds_num >= 2 and num - diamonds_num < 2 then
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if self:isFriend(p) and p:isWounded() then
+				for _, c in sgs.qlist(p:getEquips()) do
+					if c:isKindOf("SilverLion") then
+						return p
+					end
+				end
+			end
+		end
+	end
+	if num / diamonds_num >= 2 then
+		to_enemy = true
+	end
+	local to 
+	if to_enemy then
+		for _, p in sgs.qlist(targets) do
+			if self:isEnemy(p) then
+				if p:getHandcardNum() + p:getEquips():length() > discard_num then
+					if to and to:getHandcardNum() + to:getEquips():length() > p:getHandcardNum() + p:getEquips():length() then
+						to = p
+					elseif not to then
+						to = p
+					end
+				end
+			end
+		end
+	elseif to_friend then
+		for _, p in sgs.qlist(targets) do
+			if self:isFriend(p) then
+				if p:getHandcardNum() + p:getEquips():length() > discard_num then
+					if to and to:getHandcardNum() + to:getEquips():length() > p:getHandcardNum() + p:getEquips():length() then
+						to = p
+					elseif not to then
+						to = p
+					end
+				end
+				if p:hasShownSkill("xiaoji") and p:getEquips():length() > 0 then
+					to = p 
+					break
+				end
+			end
+		end
+	end
+	if not to then
+		if diamonds_num == num and diamonds_num == 0 then
+			return targets:first()
+		elseif num > 3 and num - discard_num <= 2 then
+			for _, p in sgs.qlist(targets) do
+				if self:isEnemy(p) then
+					if p:getHandcardNum() + p:getEquips():length() <= discard_num then
+						if to and to:getHandcardNum() + to:getEquips():length() < p:getHandcardNum() + p:getEquips():length() then
+							to = p
+						elseif not to then
+							to = p
+						end
+					end
+				end
+			end
+		end
+	end
+	if to then
+		return to
+	end
+	return nil
+end
+
+-----马良-----
+
+sgs.ai_skill_playerchosen["jiexun"] = function(self, targets) 
+	local source = self.player
+	local room = self.room
+	local ids = source:getTag("yingyuanCard"):toString():split("+")
+	local help_weak = false
+	local help_yueyin = false
+	local yueyin
+	local weak_friend
+	local min_card_friend
+	for _,p in sgs.qlist(room:getOtherPlayers(source)) do 
+		if self:isFriend(p) and p:hasShownSkill("jizhi") then
+			help_yueyin = true
+			yueyin = p 
+		end
+		if self:isFriend(p) and self:isWeak(p) then
+			if weak_friend then
+				if weak_friend:getHp() < p:getHp() and weak_friend:getHandcardNum() + weak_friend:getEquips():length() <= p:getHandcardNum() + p:getEquips():length() + 1 then
+					weak_friend = to
+				end
+			else
+				weak_friend = to 
+			end
+		elseif self:isFriend(p) then
+			if min_card_friend then
+				if min_card_friend:getHandcardNum() + min_card_friend:getEquips():length() > p:getHandcardNum() + p:getEquips():length() then
+					min_card_friend = to
+				end
+			else
+				min_card_friend =  to
+			end
+		end
+	end
+	for _, c in pairs(ids) do 
+		local card = sgs.Sanguosha:getCard(c)
+		if card:isKindOf("Jink") or card:isKindOf("Peach") or card:isKindOf("Analeptic") then
+			if weak_friend then
+				return weak_friend
+			end
+		elseif card:isNDTrick() then
+			if yueyin then
+				return yueyin
+			end
+		else
+			if min_card_friend then
+				return min_card_friend
+			end
+		end
+	end
+	return nil
+end
+sgs.ai_skill_invoke.zishu = function(self, data)
+	local room = self.room
+	room:getThread():delay(200)
+    return true
+end
+sgs.ai_skill_movecards.zishu1 = function(self, upcards, downcards, min_num, max_num)
+	local zishu_cards = sgs.IntList()
+	local upcards_copy = table.copyFrom(upcards)
+	local number = #upcards_copy
+	--self:sortByUseValue(upcards, true)
+	for _, c in pairs(upcards_copy) do
+		zishu_cards:append(c)
+	end
+	local down = {}
+	local handcard_list = {}
+	local useValueSelect = true
+	local keepValueSelect = true
+	for _, c in sgs.qlist(zishu_cards) do
+		for _, h in sgs.qlist(self.player:getHandcards()) do 
+			if self:isWeak(self.player) and self:getCardsNum("Jink") + self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < 2 then
+				local pile_card = sgs.Sanguosha:getCard(c)
+				if keepValueSelect and pile_card:isKindOf("Peach") or pile_card:isKindOf("Jink") or pile_card:isKindOf("Analeptic") and not table.contains(handcard_list, h) then
+					table.insert(down, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(handcard_list, h)
+					keepValueSelect = false
+					break
+				end
+				if self:getKeepValue(pile_card) > self:getKeepValue(h) and not table.contains(handcard_list, h) then
+					table.insert(down, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(handcard_list, h)
+					break
+				end
+			else 
+				local pile_card = sgs.Sanguosha:getCard(c)
+				if useValueSelect and self:getUseValue(pile_card) > self:getUseValue(h) and not table.contains(handcard_list, h) then
+					table.insert(down, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(handcard_list, h)
+					useValueSelect = false
+					break
+				elseif self:getKeepValue(pile_card) > self:getKeepValue(h) and not table.contains(handcard_list, h) then
+					table.insert(down, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(handcard_list, h)
+					break
+				end
+			end
+		end
+		if #down >= min_num then
+			break
+		end
+	end
+	return upcards_copy, down
+	--return up_card_tonumber, down
+end
+sgs.ai_skill_exchange.zishu = function(self, pattern, max_num, min_num, expand_pile)
+	local to_exchange = {}
+	local prohibit_list = self.player:property("zishuExchangeProp"):toString():split("+")
+	local cards = self.player:getCards("h")
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards, false)
+	for _,c in ipairs(cards) do
+		if not (c:isKindOf("Peach") or c:isKindOf("Analeptic")) then
+			local not_in_prohibit = true
+			for _, i in pairs(prohibit_list) do 
+				if c:getEffectiveId() == tonumber(i) then
+					not_in_prohibit = false
+				end
+			end
+			if not_in_prohibit then
+				table.insert(to_exchange, c:getEffectiveId())
+			end
+		end
+		if #to_exchange >= min_num then
+			break
+		end
+	end
+	if #to_exchange < min_num then
+		for _,c in ipairs(cards) do
+			local not_in_prohibit = true
+			for _, i in pairs(prohibit_list) do 
+				if c:getEffectiveId() == i then
+					not_in_prohibit = false
+				end
+			end
+			if not_in_prohibit then
+				table.insert(to_exchange, c:getEffectiveId())
+			end
+			if #to_exchange >= min_num then
+				break
+			end
+		end
+	end
+	return to_exchange
+end
+sgs.ai_skill_movecards.zishu2 = function(self, upcards, downcards, min_num, max_num)  --todo：借鉴灭计/涯角/【攻心】（应该简单点）
+	--local Variant = self.player:getTag("AI_shenduanDrawPileCards"):toList()
+	--self.player:removeTag("AI_shenduanDrawPileCards")
+	local zishu_cards = sgs.IntList()
+	for _, c in pairs(upcards) do
+		zishu_cards:append(c)
+	end
+	local down = {}
+	for q = 1 , #upcards, 1 do
+		down[q] = -1 
+	end
+	local nextAlive = self.player:getNextAlive()
+	local tricks = nextAlive:getJudgingArea()
+	local num = tricks:length()
+	local lightning_index = -1
+	local indulgence_index = -1
+	local supplyShortage_index = -1
+	if num > 0 then
+		if zishu_cards:length() >= num then
+			for i = num - 1  , 0 , -1 do
+				local trick = tricks:at(i)
+				if trick:isKindOf("Lightning") then
+					lightning_index = num - i 
+				elseif trick:isKindOf("Indulgence") then
+					indulgence_index = num - i 
+				elseif trick:isKindOf("SupplyShortage") then
+					supplyShortage_index = num - i
+				end
+			end
+		else
+			for i = num - 1  , num - zishu_cards:length() , -1 do
+				local trick = tricks:at(i)
+				if trick:isKindOf("Lightning") then
+					lightning_index = num - i 
+				elseif trick:isKindOf("Indulgence") then
+					indulgence_index = num - i 
+				elseif trick:isKindOf("SupplyShortage") then
+					supplyShortage_index = num - i
+				end
+			end
+		end
+		if self:isFriend(nextAlive) then
+			local lightning_not_effect = {}
+			if lightning_index ~= -1 then
+				for _,id_str in sgs.qlist(zishu_cards) do
+					if sgs.Sanguosha:getCard(id_str):getSuit() ~= sgs.Card_Spade or (sgs.Sanguosha:getCard(id_str):getNumber() < 2 and sgs.Sanguosha:getCard(id_str):getNumber() > 9) then
+						table.insert(lightning_not_effect, tonumber(id_str))
+					end
+				end
+			end
+			if indulgence_index ~= -1 then
+				for _,id_str in sgs.qlist(zishu_cards) do
+					if lightning_index ~= -1 and table.contains(lightning_not_effect,tonumber(id_str)) and #lightning_not_effect == 1 then continue end
+					if (sgs.Sanguosha:getCard(id_str):getSuit() == sgs.Card_Heart) or (nextAlive:hasShownSkill("hongyan") and sgs.Sanguosha:getCard(id_str):getSuit() == sgs.Card_Spade) then
+						down[indulgence_index] = tonumber(id_str)
+						zishu_cards:removeOne(id_str)
+						break
+					end
+				end
+			end
+			if supplyShortage_index ~= -1 then
+				for _,id_str in sgs.qlist(zishu_cards) do
+					if lightning_index ~= -1 and table.contains(lightning_not_effect,tonumber(id_str)) and #lightning_not_effect == 1 then continue end
+					if sgs.Sanguosha:getCard(id_str):getSuit() == sgs.Card_Club then
+						down[supplyShortage_index] = tonumber(id_str)
+						zishu_cards:removeOne(id_str)
+						break
+					end
+				end
+			end
+			if lightning_index ~= -1 then
+				for _,id_str in sgs.qlist(zishu_cards) do
+					if sgs.Sanguosha:getCard(id_str):getSuit() ~= sgs.Card_Spade or (sgs.Sanguosha:getCard(id_str):getNumber() < 2 and sgs.Sanguosha:getCard(id_str):getNumber() > 9) then
+						down[lightning_index] = tonumber(id_str)
+						zishu_cards:removeOne(id_str)
+						break
+					end
+				end
+			end
+			if indulgence_index ~= -1 and down[indulgence_index] == -1 then
+				for _,id_str in sgs.qlist(zishu_cards) do
+					down[indulgence_index] = tonumber(id_str)
+					zishu_cards:removeOne(id_str)
+					break
+				end
+			end
+			if supplyShortage_index ~= -1 and down[supplyShortage_index] == -1 then
+				for _,id_str in sgs.qlist(zishu_cards) do
+					down[supplyShortage_index] = tonumber(id_str)
+					zishu_cards:removeOne(id_str)
+					break
+				end
+			end
+		elseif self:isEnemy(nextAlive) then
+			if lightning_index ~= -1 then
+				for _,id_str in sgs.qlist(zishu_cards) do
+					if sgs.Sanguosha:getCard(id_str):getSuit() == sgs.Card_Spade and sgs.Sanguosha:getCard(id_str):getNumber() >= 2 and sgs.Sanguosha:getCard(id_str):getNumber() <= 9 then
+						down[lightning_index] = tonumber(id_str)
+						zishu_cards:removeOne(id_str)
+						break
+					end
+				end
+			end
+			if indulgence_index ~= -1 then
+				for _,id_str in sgs.qlist(zishu_cards) do
+					if sgs.Sanguosha:getCard(id_str):getSuit() == sgs.Card_Club then 
+						down[indulgence_index] = tonumber(id_str)
+						zishu_cards:removeOne(id_str)
+						break
+					end
+				end
+				if down[indulgence_index] == -1 then
+					for _,id_str in sgs.qlist(zishu_cards) do
+						if sgs.Sanguosha:getCard(id_str):getSuit() ~= sgs.Card_Heart  then
+							down[indulgence_index] = tonumber(id_str)
+							zishu_cards:removeOne(id_str)
+							break
+						end
+					end
+				end
+			end
+			if supplyShortage_index ~= -1 then
+				for _,id_str in sgs.qlist(zishu_cards) do
+					if sgs.Sanguosha:getCard(id_str):getSuit() == sgs.Card_Heart then 
+						down[supplyShortage_index] = tonumber(id_str)
+						zishu_cards:removeOne(id_str)
+						break
+					end
+				end
+				if down[supplyShortage_index] == -1 then
+					for _,id_str in sgs.qlist(zishu_cards) do
+						if sgs.Sanguosha:getCard(id_str):getSuit() ~= sgs.Card_Club  then
+							down[supplyShortage_index] = tonumber(id_str)
+							zishu_cards:removeOne(id_str)
+							break
+						end
+					end
+				end
+			end
+		end
+	end
+	if zishu_cards:length() > 0 then
+		for j = 1 , #upcards, 1 do
+			if down[j] == -1 then
+				down[j] = tonumber(zishu_cards:first())
+				zishu_cards:removeOne(zishu_cards:first())
+			end
+		end
+	end
+	return {}, down
+end
+	

@@ -34,7 +34,8 @@ caimao = sgs.General(extension, "caimao", "qun","4")
 hejin  = sgs.General(extension, "hejin", "qun","4")
 miheng  = sgs.General(extension, "miheng", "qun","3")
 masu = sgs.General(extension, "masu", "shu","3")
---maliang = sgs.General(extension, "maliang", "shu","3")
+xuezong = sgs.General(extension, "xuezong", "wu","3")
+maliang = sgs.General(extension, "maliang", "shu","3")
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -139,15 +140,204 @@ end
 
 --**********智包**********-----
 
+-----薛综-----
+
+funan = sgs.CreateTriggerSkill{
+	name = "funan",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.CardUsed, sgs.CardResponded, sgs.CardFinished, sgs.GameStart, sgs.EventPhaseStart},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() then return "" end
+		if event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if player:hasSkill(self:objectName()) then
+				local card = use.card
+				if use.card:isKindOf("EquipCard") then return "" end
+				local ids = {}
+				if use.card:getSubcards():length() > 0 then
+					for _, c in sgs.qlist(use.card:getSubcards()) do 
+						table.insert(ids, c)
+					end
+					--room:setPlayerProperty(player, "funanToProp", sgs.QVariant(use.to))
+					room:setPlayerProperty(player, "funanProp", sgs.QVariant(table.concat(ids,"+")))
+					room:setPlayerProperty(player, "funanInvokeProp", sgs.QVariant(true))
+				end
+			else
+				if not use.card:isKindOf("Nullification") then return "" end
+				local card = use.card
+				if card:getSubcards():length() > 0 then
+					for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+						if p:property("funanInvokeProp"):toBool() == true then
+							return self:objectName(), p
+						end
+					end
+				end
+			end
+		end
+		if event == sgs.CardResponded then
+			local response = data:toCardResponse()
+			card = response.m_card
+			if card:getSubcards():length() > 0 then
+				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+					if p:property("funanInvokeProp"):toBool() == true then
+						return self:objectName(), p
+					end
+				end
+			end
+		end
+		if event == sgs.CardFinished or event == sgs.GameStart then
+			if player:hasSkill(self:objectName()) then
+				room:setPlayerProperty(player, "funanInvokeProp", sgs.QVariant(false))
+			end
+		end
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() ~= sgs.Player_Finish then return "" end
+			local xuezong
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:property("funanProp") and p:property("funanProp"):toString() ~= "" then
+					xuezong = p
+					break
+				end
+			end
+			if not xuezong then return "" end
+			--[[local id = xuezong:property("funanProp"):toInt()
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				p:removeCardLimitation("use,response", sgs.Sanguosha:getCard(id):toString())
+			end]]--
+			room:setPlayerProperty(xuezong, "funanProp", sgs.QVariant(""))
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		room:setPlayerProperty(ask_who, "funanToProp", sgs.QVariant())
+		room:setPlayerProperty(ask_who, "funanCardProp", sgs.QVariant())
+		local to = player
+		local card_id
+		if event == sgs.CardResponded then
+			local respond = data:toCardResponse()
+			card_id = respond.m_card:getId()
+		elseif event == sgs.CardUsed then
+			local use = data:toCardUse()
+			card_id = use.card:getId()
+		end
+		room:setPlayerProperty(ask_who, "funanToProp", sgs.QVariant(to:objectName()))
+		room:setPlayerProperty(ask_who, "funanCardProp", sgs.QVariant(card_id))
+		if room:askForSkillInvoke(ask_who,"funan",data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		room:notifySkillInvoked(ask_who, self:objectName())
+		local card
+		if event == sgs.CardUsed then
+			local use = data:toCardUse()
+			card = use.card
+		end
+		if event == sgs.CardResponded then
+			local response = data:toCardResponse()
+			card = response.m_card
+		end
+		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		for _, c in sgs.qlist(card:getSubcards()) do
+			local ccc = sgs.Sanguosha:getCard(c)
+			dummy:addSubcard(ccc)
+		end
+		if dummy:getSubcards():length() > 0 then
+			room:obtainCard(ask_who, dummy)
+		end
+		room:obtainCard(ask_who, card)
+		if ask_who:getMark("funanMark") == 0 then
+			local ids = ask_who:property("funanProp"):toString():split("+")
+			local dummy1 = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			for _, c in pairs(ids) do
+				local ccc = sgs.Sanguosha:getCard(c)
+				dummy1:addSubcard(ccc)
+			end
+			if dummy1:getSubcards():length() > 0 then
+				room:obtainCard(player, dummy1)
+			end
+			room:setPlayerProperty(ask_who, "funanInvokeProp", sgs.QVariant(false))
+			--player:setCardLimitation("use,response", sgs.Sanguosha:getCard(id):toString(), false)
+			--room:setPlayerCardLimitation(player, "use, response", sgs.Sanguosha:getCard(id):toString(), false)
+		end
+	end
+}	
+jiexun = sgs.CreateTriggerSkill{
+	name = "jiexun",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		local phase = player:getPhase()
+		if phase == sgs.Player_Finish then
+			return self:objectName()
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "jiexun-invoke", true, true)
+		if to then
+			room:setPlayerProperty(player, "jiexunProp", sgs.QVariant(to:objectName()))
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		room:notifySkillInvoked(player, self:objectName())
+		local to
+		objectName = player:property("jiexunProp"):toString()
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p:objectName() == objectName then
+				to = p 
+				break
+			end
+		end
+		room:setPlayerProperty(player, "jiexunProp", sgs.QVariant())
+		local num = player:getMark("@xun")
+		local diamonds_num = 0
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			for _, c in sgs.qlist(p:getJudgingArea()) do
+				if c:getSuit() == sgs.Card_Diamond then
+					diamonds_num = diamonds_num + 1
+				end
+			end
+			for _, c in sgs.qlist(p:getEquips()) do
+				if c:getSuit() == sgs.Card_Diamond then
+					diamonds_num = diamonds_num + 1
+				end
+			end
+		end
+		to:drawCards(diamonds_num)
+		local to_card_num = to:getHandcardNum() + to:getEquips():length()
+		if num > 0 then
+			room:askForDiscard(to, self:objectName(), num, num, false, true)
+			player:gainMark("@xun")
+			sendMsg(room, "num:"..num.."to_card_num"..to_card_num)
+			if num >= to_card_num then
+				room:detachSkillFromPlayer(player,"jiexun")
+				room:setPlayerMark(player, "@xun", 0)
+				room:addPlayerMark(player, "funanMark")
+			end
+		else
+			player:gainMark("@xun")
+		end
+	end
+}
+xuezong:addSkill(funan)
+xuezong:addSkill(jiexun)
+
 -----马良-----
 
---[[zishu = sgs.CreateTriggerSkill{
+zishu = sgs.CreateTriggerSkill{
 	name = "zishu",
 	frequency = sgs.Skill_NotFrequent, 
 	events = {sgs.EventPhaseStart},
 	can_trigger = function(self, event, room, player, data)
 		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
-		if player:getPhase() == sgs.Player_Finish then
+		if player:getPhase() == sgs.Player_Finish and not player:isKongcheng() then
 			return self:objectName()
 		end
 		return ""
@@ -159,14 +349,80 @@ end
 		return false
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
-		local ids = room:getNCards(3, true)
+		room:broadcastSkillInvoke(self:objectName())
+		room:notifySkillInvoked(player, self:objectName())
+		local x = player:getHandcardNum()
+		if x > 3 then x = 3 end
+		local ids = room:getNCards(x, true)
 		local handcards = sgs.IntList()
 		for _, c in sgs.qlist(player:getHandcards()) do
 			handcards:append(c:getId())
 		end
-		local AsMove = room:askForMoveCards(player, ids, handcards, false, self:objectName(), "", self:objectName(), handcards:length(), handcards:length(), false, true)
-		local to_topHand, to_topDraw, to_bottom = sgs.IntList(), sgs.IntList(), sgs.IntList()
-		local is_hand = {}
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, player:objectName(), self:objectName(), "")
+		local AsMove = room:askForMoveCards(player, ids, sgs.IntList(), true, "zishu1", "", self:objectName(), 0, x, false, true)
+		local ids_sorts = {}
+		for _, c in sgs.qlist(ids) do
+			table.insert(ids_sorts, c)
+		end
+		local to_top = sgs.IntList(), sgs.IntList()
+		local size = AsMove.bottom:length()
+		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		local prohibit = ""
+		local prohibit_list = {}
+		for _, c in sgs.qlist(AsMove.bottom) do
+			if prohibit ~= "" then
+				prohibit = prohibit.."+"
+			end
+			local ccc = sgs.Sanguosha:getCard(c)
+			dummy:addSubcard(ccc)
+			prohibit = prohibit.."^"..sgs.Sanguosha:getCard(c):toString()
+			ids:removeOne(c)
+			table.insert(prohibit_list, c)
+		end
+		local to_top_ids = sgs.IntList()
+		for _, c in pairs(ids_sorts) do
+			for _, d in sgs.qlist(ids) do 
+				if c == d then
+					to_top_ids:prepend(c)
+				end
+			end
+		end
+		
+		local moves = sgs.CardsMoveList()
+		local move1 = sgs.CardsMoveStruct(to_top_ids, player, nil, sgs.Player_PlaceTable, sgs.Player_DrawPile, reason)
+		sendMsg(room,"prohibit:"..prohibit)
+		if dummy:getSubcards():length() > 0 then
+			room:obtainCard(player, dummy)
+			room:setPlayerProperty(player, "zishuExchangeProp", sgs.QVariant(table.concat(prohibit_list, "+")))
+			local exc_card = room:askForExchange(player, self:objectName(), size, size, "zishuPush", "", prohibit.."|.|.|hand")
+			room:setPlayerProperty(player, "zishuExchangeProp", sgs.QVariant())
+			if not exc_card then
+				exc_card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+				for p = 0, size-1, 1 do
+					exc_card:addSubcard(player:getHandcards():at(p))
+				end
+			end
+			local putcards = sgs.IntList()
+			for _, c in sgs.qlist(exc_card:getSubcards()) do
+				putcards:append(c)
+			end
+			if putcards:length() == 1 then
+				to_top:prepend(putcards:first())
+			else
+				local AsMove = room:askForMoveCards(player, putcards, sgs.IntList(), true, "zishu2", "", self:objectName(), size, size, false, false)
+				for _, id in sgs.qlist(AsMove.bottom) do
+					to_top:prepend(id)
+				end
+			end
+			local move2 = sgs.CardsMoveStruct(to_top, player, nil, sgs.Player_PlaceTable, sgs.Player_DrawPile, reason)
+			moves:append(move2)
+		end
+		moves:append(move1)
+		room:setTag("zishuMoving", sgs.QVariant(true))  --for AI (filterEvent)
+		room:moveCardsAtomic(moves, true)
+		room:removeTag("zishuMoving")
+		
+		--[[local is_hand = {}
 		for _, id in sgs.qlist(AsMove.top) do
 			local fromHandCard = false
 			for _, hand in sgs.qlist(handcards) do
@@ -215,46 +471,67 @@ end
 		room:setTag("zishuMoving", sgs.QVariant(true))  --for AI (filterEvent)
 		room:moveCardsAtomic(moves, false)
 		room:removeTag("zishuMoving")
-		return false
+		return false--]]
 	end
 	--priority = -11
 }
 yingyuan = sgs.CreateTriggerSkill{
 	name = "yingyuan",
 	frequency = sgs.Skill_NotFrequent,
-	events = {sgs.BeforeCardsMove,sgs.CardUsed, sgs.EventPhaseStart},
+	events = {sgs.BeforeCardsMove,sgs.CardUsed, sgs.EventPhaseStart, sgs.CardFinished, sgs.JinkEffect},
 	can_trigger = function(self, event, room, player, data)
 		if event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_End then
 				local maliang = room:findPlayersBySkillName(self:objectName())
 				for _, p in sgs.qlist(maliang) do
 					p:setTag("yingyuanTag", sgs.QVariant(""))
+					player:removeTag("yingyuanCard")
+					player:removeTag("yingyuanCardName")
+					p:setTag("yingyuanInvoke", sgs.QVariant(false))
 				end
 			end
-		elseif event == sgs.CardUsed then
+		elseif event == sgs.CardUsed or event == sgs.JinkEffect then
 			if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
-			local use = data:toCardUse()
+			local card
+			if event == sgs.CardUsed then
+				local use = data:toCardUse()
+				card = use.card
+			elseif event == sgs.JinkEffect then
+				card = data:toCard()
+				if card:getSubcards():length() == 0 then return "" end
+			end
+			if card:isKindOf("EquipCard") or card:isKindOf("Lightning") or card:isKindOf("SupplyShortage") or card:isKindOf("Indulgence") then return "" end
 			local use_history = player:getTag("yingyuanTag"):toString():split("+")
 			local use_history_num
 			if use_history == "" then use_history_num = 0 else use_history_num = #use_history end
 			if use_history_num > getKingdoms(room) then return "" end
 			if #use_history > 0 then
 				for _, c in pairs(use_history) do
-					if use.card:isKindOf(c) then
+					if card:objectName() == c then
 						return ""
 					end
 				end
 			end
-			player:setTag("yingyuanCardName", sgs.QVariant(use.card:objectName()))
-			if use.card:isVirtualCard() then
-				if use.card:getSubcards():length() == 0 then return "" end
-				for _, c in sgs.qlist(use.card:getSubcards()) do
-					room:setCardFlag(c, "can_obtain")
+			player:setTag("yingyuanCardName", sgs.QVariant(card:objectName()))
+			local ids = {}
+			if card:getSubcards():length() > 0 then
+				for _, c in sgs.qlist(card:getSubcards()) do 
+					table.insert(ids, c)
 				end
-			else
-				room:setCardFlag(use.card:getEffectiveId(), "can_obtain")
+				player:setTag("yingyuanInvoke", sgs.QVariant(true))
+				player:setTag("yingyuanCard", sgs.QVariant(table.concat(ids,"+")))
 			end
-		elseif event == sgs.BeforeCardsMove then
+			if event == sgs.JinkEffect then
+				if player:getTag("yingyuanInvoke"):toBool() == true then
+					return self:objectName()
+				end
+			end
+		elseif event == sgs.CardFinished then
+			if player:getTag("yingyuanInvoke"):toBool() == true then
+				return self:objectName()
+			end
+		end
+		--[[elseif event == sgs.BeforeCardsMove then
 			if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
 			local move = data:toMoveOneTime()
 			if move.from_places:contains(sgs.Player_PlaceTable) and (move.to_place == sgs.Player_DiscardPile)
@@ -270,9 +547,10 @@ yingyuan = sgs.CreateTriggerSkill{
 					return self:objectName()
 				end
 			end
-		end
+		end--]]
 	end,
 	on_cost = function(self, event, room, player, data,ask_who)
+		player:setTag("yingyuanInvoke", sgs.QVariant(false))
 		local targets = sgs.SPlayerList()
 		room:setPlayerProperty(player, "yingyuanSelectProp", data)
 		local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "yingyuan-invoke", true, true)
@@ -287,6 +565,7 @@ yingyuan = sgs.CreateTriggerSkill{
 			return true
 		end
 		player:removeTag("yingyuanCardName")
+		player:removeTag("yingyuanCard")
 		return false
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
@@ -299,10 +578,22 @@ yingyuan = sgs.CreateTriggerSkill{
 			if p:objectName() == objectName then
 				to = p 
 				break
-			end
+			end 
 		end
 		room:setPlayerProperty(player, "yingyuanProp", sgs.QVariant())
-		local move = data:toMoveOneTime()
+		local ids = player:getTag("yingyuanCard"):toString():split("+")
+		player:removeTag("yingyuanCard")
+		if #ids > 0 then
+			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			for _, c in pairs(ids) do
+				local ccc = sgs.Sanguosha:getCard(c)
+				dummy:addSubcard(ccc)
+			end
+			if dummy:getSubcards():length() > 0 then
+				room:obtainCard(to, dummy)
+			end
+		end
+		--[[local move = data:toMoveOneTime()
 		if move.from_places:contains(sgs.Player_PlaceTable) and (move.to_place == sgs.Player_DiscardPile)
 				and (move.reason.m_reason == sgs.CardMoveReason_S_REASON_USE) then
 			--local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
@@ -323,12 +614,12 @@ yingyuan = sgs.CreateTriggerSkill{
 				room:moveCardsAtomic(move1)
 				data:setValue(move)
 			end
-		end
+		end--]]
 		return false
 	end
 }
 maliang:addSkill(zishu)
-maliang:addSkill(yingyuan)--]]
+maliang:addSkill(yingyuan)
 
 -----君主·曹操-----
 
@@ -4920,7 +5211,7 @@ zumao:addCompanion("sunjian")
 zhoucang:addCompanion("guanyu")
 caimao:addCompanion("liubiao")
 hejin:addCompanion("hetaihou")
---maliang:addCompanion("masu")
+maliang:addCompanion("masu")
 
 --**********猛包**********-----
 
@@ -5166,9 +5457,21 @@ sgs.LoadTranslationTable{
 	["maliang"] = "马良",
 	["#maliang"] = "白眉智士",
 	["yingyuan"] = "应援",
-	[":yingyuan"] = "每回合限x次（x为场上势力数），当你使用一张牌后，你可以将之交给一名角色（相同牌名的牌每回合限一次）。",
+	[":yingyuan"] = "每回合限x次（x为场上势力数），当你使用基本牌或非延时锦囊牌结算完毕后，你可以将之交给一名其他角色（相同牌名的牌每回合限一次）。",
 	["zishu"] = "自书",
-	[":zishu"] = "你的回合结束后，你可以观看牌堆顶的三张牌，然后你可以将其中任意张牌替换你等量的手牌并且可以对其排列顺序。",
+	[":zishu"] = "你的回合结束后，你可以观看牌堆顶的x张牌（x为你的手牌数且不得超过3），然后你可以选择获得其中任意张牌，并将等量的其他手牌置于牌堆顶。",
+	["xuezong"] = "薛综",
+	["#xuezong"] = "东宫弦诵",
+	["funan"] = "复难",
+	[":funan"] = "其他角色使用或打出牌响应你使用的牌时，你可令其获得你使用的牌（其本回合不能使用或打出这张牌），然后你获得其使用或打出的牌。",
+	["jiexun"] = "诫训",
+	[":jiexun"] = "结束阶段，你可令一名其他角色摸等同于场上方块牌数的牌，然后弃置X张牌（X为此前该技能发动过的次数）。若其因此法弃置了所有牌，则你失去“诫训”，然后你发动“复难”时，无须令其获得你使用的牌。",
+	["xushi"] = "徐氏",
+	["#xushi"] = "节义双全",
+	["wengua"] = "问卦",
+	[":wengua"] = "一名角色的回合结束后，若其已受伤，你可以摸一张牌，然后将一张牌置于牌堆顶或排队底。",
+	["mouzhu"] = "谋诛",
+	[":mouzhu"] = "出牌阶段，你可以指定一名攻击范围内的男性角色并依次展示牌堆底的x张牌（x为场上已受伤的角色数且最多不能超过你的体力上限），若展示的牌为【杀】或黑色锦囊牌，你视为对其使用。执行完毕后，你结束出牌阶段。",
 	--加强包--
 	["lizhan"] = "励战",
 	[":lizhan"] = "副将技，此武将牌上单独的阴阳鱼个数-1，回合结束时，你可以令任意名已受伤的角色摸一张牌。",
@@ -5243,7 +5546,9 @@ sgs.LoadTranslationTable{
 	["@shejian"] = "请展示一张手牌",
 	["@benyu-discard"] = "你可以弃置手牌对伤害来源造成一点伤害",
 	["mouduan-invoke"] = "你可以指定一名五良将或五谋臣",
-	["weishe-invoke"] = "你可以指定一名目标角色，对其发动“威慑”。",
+	["weishe-invoke"] = "你可以指定一名目标角色，对其发动“威慑”",
+	["jiexun-invoke"] = "你可以指定一名其他角色，对其发动“诫训”",
+	["yingyuan-invoke"] = "你可以将此牌交给一名其他角色",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
@@ -5276,6 +5581,7 @@ sgs.LoadTranslationTable{
 	["@lead"] = "锋",
 	["@yaowu"] = "耀武",
 	["@zili"] = "自立",
+	["@xun"] = "训",
 	
 	
 	
