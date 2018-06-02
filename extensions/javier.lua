@@ -36,6 +36,7 @@ miheng  = sgs.General(extension, "miheng", "qun","3")
 masu = sgs.General(extension, "masu", "shu","3")
 xuezong = sgs.General(extension, "xuezong", "wu","3")
 maliang = sgs.General(extension, "maliang", "shu","3")
+xushi = sgs.General(extension, "xushi", "wu","3")
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -51,6 +52,10 @@ meng_zhaoyun = sgs.General(extension2, "meng_zhaoyun", "shu","3")
 meng_luxun = sgs.General(extension2, "meng_luxun", "wu","3")
 meng_dianwei = sgs.General(extension2, "meng_dianwei", "wei","4")
 meng_dongzhuo = sgs.General(extension2, "meng_dongzhuo", "qun","4")
+
+--**********测试专用**********-----
+
+gaoda = sgs.General(extension2, "gaoda", "shu","100", true, true, false)
 
 --===========================================函数区============================================--
 
@@ -139,6 +144,46 @@ end
 --===========================================技能区============================================--
 
 --**********智包**********-----
+
+-----徐氏-----
+
+wengua = sgs.CreateTriggerSkill{
+	name = "wengua",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() then return "" end
+		if player:isWounded() and player:getPhase() == sgs.Player_Finish then
+			local xushi = room:findPlayerBySkillName(self:objectName())
+			return self:objectName(), xushi
+		end
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(ask_who,self:objectName(),data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		room:notifySkillInvoked(player, self:objectName())
+		ask_who:drawCards(1)
+		local exc_card = room:askForExchange(ask_who, self:objectName(), 1, 1, "wenguaPush", "", ".")
+		if exc_card then
+			local choice = room:askForChoice(ask_who, self:objectName(), "pile_top+pile_bottom")
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, source:objectName(), self:objectName(), "")
+			local moves = sgs.CardsMoveList()
+			local move
+			if choice == "pile_top" then
+				move = sgs.CardsMoveStruct(exc_card, source, nil, sgs.Player_PlaceHand, sgs.Player_DrawPile, reason)
+			elseif choice == "pile_bottom" then
+				move = sgs.CardsMoveStruct(exc_card, source, nil, sgs.Player_PlaceHand, sgs.DrawPileBottom , reason)
+			end
+			moves:append(move)
+		end
+		return false
+	end
+}
 
 -----薛综-----
 
@@ -493,6 +538,7 @@ yingyuan = sgs.CreateTriggerSkill{
 		elseif event == sgs.CardUsed or event == sgs.JinkEffect then
 			if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
 			local card
+		sendMsg(room,"1")
 			if event == sgs.CardUsed then
 				local use = data:toCardUse()
 				card = use.card
@@ -500,6 +546,7 @@ yingyuan = sgs.CreateTriggerSkill{
 				card = data:toCard()
 				if card:getSubcards():length() == 0 then return "" end
 			end
+		sendMsg(room,"2")
 			if card:isKindOf("EquipCard") or card:isKindOf("Lightning") or card:isKindOf("SupplyShortage") or card:isKindOf("Indulgence") then return "" end
 			local use_history = player:getTag("yingyuanTag"):toString():split("+")
 			local use_history_num
@@ -512,21 +559,27 @@ yingyuan = sgs.CreateTriggerSkill{
 					end
 				end
 			end
+		sendMsg(room,"3")
 			player:setTag("yingyuanCardName", sgs.QVariant(card:objectName()))
 			local ids = {}
-			if card:getSubcards():length() > 0 then
-				for _, c in sgs.qlist(card:getSubcards()) do 
-					table.insert(ids, c)
-				end
+		sendMsg(room,"31:"..card:subcardsLength())
+			for _, c in sgs.qlist(card:getSubcards()) do 
+				sendMsg(room,"31:"..c)
+				table.insert(ids, c)
+			end
+			if #ids > 0 then
 				player:setTag("yingyuanInvoke", sgs.QVariant(true))
 				player:setTag("yingyuanCard", sgs.QVariant(table.concat(ids,"+")))
 			end
+		sendMsg(room,"32")
 			if event == sgs.JinkEffect then
 				if player:getTag("yingyuanInvoke"):toBool() == true then
 					return self:objectName()
 				end
 			end
+		sendMsg(room,"4")
 		elseif event == sgs.CardFinished then
+		sendMsg(room,"5"..player:getTag("yingyuanInvoke"):toString())
 			if player:getTag("yingyuanInvoke"):toBool() == true then
 				return self:objectName()
 			end
@@ -552,9 +605,8 @@ yingyuan = sgs.CreateTriggerSkill{
 	on_cost = function(self, event, room, player, data,ask_who)
 		player:setTag("yingyuanInvoke", sgs.QVariant(false))
 		local targets = sgs.SPlayerList()
-		room:setPlayerProperty(player, "yingyuanSelectProp", data)
+		sendMsg(room,"ddd")
 		local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "yingyuan-invoke", true, true)
-		room:setPlayerProperty(player, "yingyuanSelectProp", sgs.QVariant())
 		if to then
 			room:setPlayerProperty(player, "yingyuanProp", sgs.QVariant(to:objectName()))
 			local use_history = player:getTag("yingyuanTag"):toString():split("+")
@@ -949,6 +1001,7 @@ kuangcaiUserCard = sgs.CreateTriggerSkill{
 		if room:getCurrent():objectName() ~= player:objectName() then return "" end
 		if player:getMark("@kuang") > 0 then
 			local use = data:toCardUse()
+			local card = use.card 
 			if use.card:isKindOf("BasicCard") or use.card:isKindOf("TrickCard") or use.card:isKindOf("EquipCard") then
 				return self:objectName()
 			end
@@ -5195,6 +5248,28 @@ weishe = sgs.CreateTriggerSkill{
 meng_dongzhuo:addSkill(huangyin)
 meng_dongzhuo:addSkill(weishe)
 
+--**********测试专用**********-----
+
+zhenhan = sgs.CreateTriggerSkill{
+	name = "zhenhan",
+	can_preshow = false,
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.GameStart},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		sendMsg(room, player:objectName())
+		return self:objectName()
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(ask_who,self:objectName(),data) then
+			player:showGeneral(player:inHeadSkills(self:objectName()))
+			player:gainAnExtraTurn()
+		end
+		return false
+	end
+}
+gaoda:addSkill(zhenhan)
+
 --===========================================珠联璧合区============================================--
 
 --**********智包**********-----
@@ -5514,6 +5589,10 @@ sgs.LoadTranslationTable{
 	[":huangyin"] = "出牌阶段限一次，你可以指定一名女性角色，其需弃置一张牌，然后若此时其手牌数大于你，你回复一点体力。",
 	["weishe"] = "威慑",
 	[":weishe"] = "你使用【杀】或黑色锦囊牌指定目标后，可以令其中一名角色弃置一张牌。",
+	--测试专用--
+	["gaoda"] = "高达",
+	["zhenhan"] = "震撼",
+	[":zhenhan"] = "锁定技，游戏开始时，你亮出此武将牌并执行一个额外的回合。",
 -----msg-----
 	["#yaowu"] = "%from 发动技能“耀武”，此次伤害无效。",
 -----invoke-----

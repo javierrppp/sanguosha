@@ -3260,36 +3260,35 @@ sgs.ai_skill_playerchosen["jiexun"] = function(self, targets)
 end
 
 -----马良-----
-
-sgs.ai_skill_playerchosen["jiexun"] = function(self, targets) 
-	local source = self.player
+sgs.ai_skill_playerchosen.yingyuan = function(self, targets)
+	
+	return targets:first()
+	--[[local source = self.player
 	local room = self.room
 	local ids = source:getTag("yingyuanCard"):toString():split("+")
-	local help_weak = false
-	local help_yueyin = false
-	local yueyin
-	local weak_friend
-	local min_card_friend
-	for _,p in sgs.qlist(room:getOtherPlayers(source)) do 
+	local yueyin = nil
+	local weak_friend = nil
+	local min_card_friend = nil
+	for _,p in sgs.qlist(targets) do 
 		if self:isFriend(p) and p:hasShownSkill("jizhi") then
-			help_yueyin = true
 			yueyin = p 
 		end
 		if self:isFriend(p) and self:isWeak(p) then
 			if weak_friend then
-				if weak_friend:getHp() < p:getHp() and weak_friend:getHandcardNum() + weak_friend:getEquips():length() <= p:getHandcardNum() + p:getEquips():length() + 1 then
-					weak_friend = to
+				if weak_friend:getHp() > p:getHp() and p:getHandcardNum() + p:getEquips():length() <= weak_friend:getHandcardNum() + weak_friend:getEquips():length() + 1 then
+					weak_friend = p
 				end
 			else
-				weak_friend = to 
+				weak_friend = p 
 			end
-		elseif self:isFriend(p) then
+		end
+		if self:isFriend(p) then
 			if min_card_friend then
 				if min_card_friend:getHandcardNum() + min_card_friend:getEquips():length() > p:getHandcardNum() + p:getEquips():length() then
-					min_card_friend = to
+					min_card_friend = p
 				end
 			else
-				min_card_friend =  to
+				min_card_friend =  p
 			end
 		end
 	end
@@ -3299,17 +3298,19 @@ sgs.ai_skill_playerchosen["jiexun"] = function(self, targets)
 			if weak_friend then
 				return weak_friend
 			end
-		elseif card:isNDTrick() then
+		end
+		if card:isNDTrick() then
 			if yueyin then
 				return yueyin
 			end
-		else
-			if min_card_friend then
-				return min_card_friend
-			end
+		end
+		if min_card_friend then
+			return min_card_friend
 		end
 	end
-	return nil
+	if min_card_friend then
+		return min_card_friend
+	end--]]
 end
 sgs.ai_skill_invoke.zishu = function(self, data)
 	local room = self.room
