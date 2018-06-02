@@ -3261,9 +3261,7 @@ end
 
 -----马良-----
 sgs.ai_skill_playerchosen.yingyuan = function(self, targets)
-	
-	return targets:first()
-	--[[local source = self.player
+	local source = self.player
 	local room = self.room
 	local ids = source:getTag("yingyuanCard"):toString():split("+")
 	local yueyin = nil
@@ -3293,7 +3291,7 @@ sgs.ai_skill_playerchosen.yingyuan = function(self, targets)
 		end
 	end
 	for _, c in pairs(ids) do 
-		local card = sgs.Sanguosha:getCard(c)
+		local card = sgs.Sanguosha:getCard(tonumber(c))
 		if card:isKindOf("Jink") or card:isKindOf("Peach") or card:isKindOf("Analeptic") then
 			if weak_friend then
 				return weak_friend
@@ -3310,7 +3308,7 @@ sgs.ai_skill_playerchosen.yingyuan = function(self, targets)
 	end
 	if min_card_friend then
 		return min_card_friend
-	end--]]
+	end
 end
 sgs.ai_skill_invoke.zishu = function(self, data)
 	local room = self.room
