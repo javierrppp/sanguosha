@@ -3260,10 +3260,12 @@ sgs.ai_skill_playerchosen["jiexun"] = function(self, targets)
 end
 
 -----马良-----
+
 sgs.ai_skill_playerchosen.yingyuan = function(self, targets)
 	local source = self.player
 	local room = self.room
 	local ids = source:getTag("yingyuanCard"):toString():split("+")
+	if #ids == 0 or ids[1] == "" then return nil end
 	local yueyin = nil
 	local weak_friend = nil
 	local min_card_friend = nil
@@ -3360,7 +3362,7 @@ sgs.ai_skill_movecards.zishu1 = function(self, upcards, downcards, min_num, max_
 				end
 			end
 		end
-		if #down >= min_num then
+		if #down >= max_num then
 			break
 		end
 	end
@@ -3559,3 +3561,65 @@ sgs.ai_skill_movecards.zishu2 = function(self, upcards, downcards, min_num, max_
 	return {}, down
 end
 	
+-----王基-----
+
+sgs.ai_skill_playerchosen.qizhi = function(self, targets)
+	local source = self.player
+	local room = self.room
+	local dengai
+	local weixie
+	local fangyu
+	local wangji
+	for _, p in sgs.qlist(targets) do
+		if self:isFriend(p) and p:hasShownSkill("tuntian") then
+			dengai = p 
+		end
+		if self:isEnemy(p) then
+			if p:getEquip(1) then
+				fangyu = p
+			end
+			if not self:isFriend(p:getNextAlive(1)) and not self:isFriend(p:getNextAlive(-1)) then
+				if p:getEquip(0) or p:getEquip(3) then
+					weixie = p
+				end
+			end
+		end
+		if p:objectName() == source:objectName() then
+			wangji = p 
+		end
+		if weixie then return weixie end
+		if dengai then return dengai end
+		if fangyu then return fangyu end
+		if wangji then return wangji end
+	end
+	return targets:first()
+end
+sgs.ai_skill_invoke.jinqu_damaged = function(self, data)
+	local room = self.room
+	room:getThread():delay(100)
+    return true
+end
+sgs.ai_skill_invoke.jinqu = function(self, data)
+	local x = self.player:getMark("@qizhi")
+	local handcardNum = self.player:getHandcardNum()
+	if handcardNum <= x then
+		return true
+	elseif (handcardNum > 0 and handcardNum < 3 and handcardNum - x <= 1) or (handcardNum >=3 and handcardNum < 6 and handcardNum - x <= 2) or (handcardNum >=6 and handcardNum < 10 and handcardNum - x <= 3) then
+		local junk_cards_num = 0
+		local slash_num = 0
+		local fangyu_num = 0
+		for _, c in sgs.qlist(self.player:getHandcards()) do 
+			if c:isKindOf("TrickCard") and not c:isKindOf("Nullification") then
+				junk_cards_num = junk_cards_num + 1
+			elseif c:isKindOf("EquipCard") then 
+				junk_cards_num = junk_cards_num + 1 
+			elseif c:isKindOf("Slash") then
+				slash_num = slash_num + 1 
+			elseif c:isKindOf("Peach") or c:isKindOf("Jink") or (c:isBlack() and self.player:hasSkill("qingguo")) then
+				fangyu_num = fangyu_num + 1 
+			end
+			if junk_cards_num >= handcardNum - x then return true end
+			if fangyu_num < slash_num then return true end
+		end
+	end
+end 

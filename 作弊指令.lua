@@ -1,0 +1,1 @@
+R:acquireSkill(P,"rende")
