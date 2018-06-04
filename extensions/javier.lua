@@ -334,24 +334,110 @@ wengua = sgs.CreateTriggerSkill{
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
 		room:broadcastSkillInvoke(self:objectName())
-		room:notifySkillInvoked(player, self:objectName())
+		room:notifySkillInvoked(ask_who, self:objectName())
 		ask_who:drawCards(1)
 		local exc_card = room:askForExchange(ask_who, self:objectName(), 1, 1, "wenguaPush", "", ".")
-		if exc_card then
-			local choice = room:askForChoice(ask_who, self:objectName(), "pile_top+pile_bottom")
-			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, source:objectName(), self:objectName(), "")
-			local moves = sgs.CardsMoveList()
-			local move
-			if choice == "pile_top" then
-				move = sgs.CardsMoveStruct(exc_card, source, nil, sgs.Player_PlaceHand, sgs.Player_DrawPile, reason)
-			elseif choice == "pile_bottom" then
-				move = sgs.CardsMoveStruct(exc_card, source, nil, sgs.Player_PlaceHand, sgs.DrawPileBottom , reason)
-			end
-			moves:append(move)
+		if not exc_card then
+			exc_card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			exc_card:addSubcard(ask_who:getHandcards():first())
 		end
+		local putcards = sgs.IntList()
+		for _, c in sgs.qlist(exc_card:getSubcards()) do
+			putcards:append(c)
+		end
+		local choice = room:askForChoice(ask_who, self:objectName(), "pile_top+pile_bottom")
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, ask_who:objectName(), self:objectName(), "")
+		local moves = sgs.CardsMoveList()
+		local move
+		if choice == "pile_top" then
+			move = sgs.CardsMoveStruct(putcards, ask_who, nil, sgs.Player_PlaceHand, sgs.Player_DrawPile, reason)
+		elseif choice == "pile_bottom" then
+			move = sgs.CardsMoveStruct(putcards, ask_who, nil, sgs.Player_PlaceHand, sgs.Player_DrawPileBottom , reason)
+		end
+		moves:append(move)
+		room:moveCardsAtomic(moves, true)
 		return false
 	end
 }
+fuzhuCard = sgs.CreateSkillCard{
+	name = "fuzhuCard",
+	skill_name = "fuzhu",
+	target_fixed = false,
+	will_throw = false,
+	handling_method = sgs.Card_MethodNone,
+	mute = true,
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() then
+			return false
+		elseif not to_select:isMale() then
+			return false
+		elseif not sgs.Self:inMyAttackRange(to_select) then
+			return false
+		elseif #targets == 0 then
+			return true
+		end
+		return false
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		room:broadcastSkillInvoke("fuzhu")
+		local to = targets[1]
+		local x = 0
+		for _, q in sgs.qlist(room:getAlivePlayers()) do 
+			if q:isWounded() then
+				x = x + 1
+			end
+			if x >= source:getMaxHp() then
+				break
+			end
+		end
+		sendMsg(room, "fuzhu"..x)
+		for i = 1, x, 1  do
+			if not to:isAlive() or room:getDrawPile():isEmpty() then return false end
+			local id = room:getDrawPile():at(room:getDrawPile():length()-1)
+			local move = sgs.CardsMoveStruct(id, nil, sgs.Player_PlaceTable, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, source:objectName(), "fuzhu", ""))
+			room:moveCardsAtomic(move, true)
+			room:getThread():delay(200)
+			local card = sgs.Sanguosha:getCard(id)
+			if (card:isBlack() and card:isKindOf("TrickCard") and not card:isKindOf("Collateral") and 
+				not card:isKindOf("Nullification") and not card:isKindOf("FightTogether") and 
+				not card:isKindOf("ThreatenEmperor") and not card:isKindOf("Lightning") and not card:isKindOf("BurningCamps")) or 
+				card:isKindOf("Slash") then
+				if not source:isProhibited(to, card) then 
+					local targets = sgs.SPlayerList()
+					targets:append(to)
+					local use_card = sgs.Sanguosha:cloneCard(card:objectName(), card:getSuit(), card:getNumber())
+					use_card:addSubcard(card)
+					use_card:setSkillName("fuzhu")
+					local card_use = sgs.CardUseStruct()
+					card_use.from = source
+					card_use.to = targets
+					card_use.card = use_card
+					room:useCard(card_use, false)
+				end
+			else
+				room:throwCard(id, source)
+			end
+		end
+		source:setPhase(sgs.Player_Discard)
+	end
+}
+fuzhu = sgs.CreateZeroCardViewAsSkill{   
+	name = "fuzhu",
+	view_as = function(self)
+		local skillcard = fuzhuCard:clone()
+		skillcard:setSkillName(self:objectName())
+		skillcard:setShowSkill(self:objectName())
+		return skillcard
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#fuzhuCard")
+	end
+}
+xushi:addSkill(wengua)
+xushi:addSkill(fuzhu)
 
 -----薛综-----
 
@@ -762,57 +848,6 @@ zishu = sgs.CreateTriggerSkill{
 		room:setTag("zishuMoving", sgs.QVariant(true))  --for AI (filterEvent)
 		room:moveCardsAtomic(moves, true)
 		room:removeTag("zishuMoving")
-		
-		--[[local is_hand = {}
-		for _, id in sgs.qlist(AsMove.top) do
-			local fromHandCard = false
-			for _, hand in sgs.qlist(handcards) do
-				if hand == id then
-					fromHandCard = true
-				end
-			end
-			if fromHandCard then
-				table.insert(is_hand, 1)
-				to_topHand:prepend(id) 
-			else
-				table.insert(is_hand, 0)
-				to_topDraw:prepend(id) 
-			end
-		end
-		for _, id in sgs.qlist(AsMove.bottom) do
-			local fromDrawPile = true
-			for _, hand in sgs.qlist(handcards) do
-				if hand == id then
-					fromDrawPile = false
-				end
-			end
-			if fromDrawPile then
-				to_bottom:prepend(id) 
-			end
-		end
-		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, player:objectName(), self:objectName(), "")
-		local reason1 = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTBACK, player:objectName(), self:objectName(), "")
-		local moves = sgs.CardsMoveList()
-		for i, id in sgs.qlist(AsMove.top) do
-			sendMsg(room, "i为"..i)
-			local move
-			if is_hand[i+1] == 1 then
-				move = sgs.CardsMoveStruct(id, player, player,sgs.Player_PlaceHand, sgs.Player_DrawPile, reason)
-			else
-				sendMsg(room, "ide 为"..i)
-				move = sgs.CardsMoveStruct(id, player, nil,sgs.Player_PlaceTable, sgs.Player_DrawPile, reason)
-				local move = sgs.CardsMoveStruct(to_top, player, nil, sgs.Player_DiscardPile, sgs.Player_DrawPile, reason)
-				--move = sgs.CardsMoveStruct(id, player, sgs.Player_DrawPile, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, player:objectName(), self:objectName(), ""))
-			end
-			moves:append(move)
-		end
-		--local move = sgs.CardsMoveStruct(to_top, player, player,sgs.Player_PlaceTable, sgs.Player_DrawPile, reason)
-		local move1 = sgs.CardsMoveStruct(to_bottom, player, player,sgs.Player_PlaceTable, sgs.Player_PlaceHand, reason1)
-		moves:append(move1)
-		room:setTag("zishuMoving", sgs.QVariant(true))  --for AI (filterEvent)
-		room:moveCardsAtomic(moves, false)
-		room:removeTag("zishuMoving")
-		return false--]]
 	end
 	--priority = -11
 }
@@ -5498,6 +5533,9 @@ tiequCard = sgs.CreateSkillCard{
 		local DiscardPile = room:getDiscardPile()
 		for _,cid in sgs.qlist(DiscardPile) do
 			local cd = sgs.Sanguosha:getCard(cid)
+			if cd:isKindOf("Yitian") or cd:isKindOf("Shengguangbaiyi") or cd:isKindOf("juechen") or cd:isKindOf("nanmanxiang") then
+				continue
+			end
 			if cd:isKindOf("Weapon") and not source:getEquip(0) then
 				table.insert(cardList, cid)
 			elseif cd:isKindOf("Armor") and not source:getEquip(1) then
@@ -5513,6 +5551,9 @@ tiequCard = sgs.CreateSkillCard{
 		local DrawPile = room:getDrawPile()
 		for _,cid in sgs.qlist(DrawPile) do
 			local cd = sgs.Sanguosha:getCard(cid)
+			if cd:isKindOf("Yitian") or cd:isKindOf("Shengguangbaiyi") or cd:isKindOf("juechen") or cd:isKindOf("nanmanxiang") then
+				continue
+			end
 			if cd:isKindOf("Weapon") and not source:getEquip(0) then
 				table.insert(cardList, cid)
 			elseif cd:isKindOf("Armor") and not source:getEquip(1) then
@@ -5691,8 +5732,8 @@ meng_dongzhuo:addSkill(weishe)
 zhenhan = sgs.CreateTriggerSkill{
 	name = "zhenhan",
 	can_preshow = false,
-	frequency = sgs.Skill_Compulsory,
-	events = {sgs.GameStart},
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.Damaged},
 	can_trigger = function(self, event, room, player, data)
 		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
 		sendMsg(room, player:objectName())
@@ -5986,8 +6027,8 @@ sgs.LoadTranslationTable{
 	["#xushi"] = "节义双全",
 	["wengua"] = "问卦",
 	[":wengua"] = "一名角色的回合结束后，若其已受伤，你可以摸一张牌，然后将一张牌置于牌堆顶或排队底。",
-	["mouzhu"] = "谋诛",
-	[":mouzhu"] = "出牌阶段，你可以指定一名攻击范围内的男性角色并依次展示牌堆底的x张牌（x为场上已受伤的角色数且最多不能超过你的体力上限），若展示的牌为【杀】或黑色锦囊牌，你视为对其使用。执行完毕后，你结束出牌阶段。",
+	["fuzhu"] = "伏诛",
+	[":fuzhu"] = "出牌阶段，你可以指定一名攻击范围内的男性角色并依次展示牌堆底的x张牌（x为场上已受伤的角色数且最多不能超过你的体力上限），若展示的牌为【杀】或黑色锦囊牌（必须为有指定目标且目标为非自己的锦囊牌），你视为对其使用。执行完毕后，你结束出牌阶段。",
 	["#wangji"] = "经行合一",
 	["wangji"] = "王基",
 	["~wangji"] = "天下之事，必归大魏，可恨未能得见啊……",
@@ -6046,7 +6087,7 @@ sgs.LoadTranslationTable{
 	--测试专用--
 	["gaoda"] = "高达",
 	["zhenhan"] = "震撼",
-	[":zhenhan"] = "锁定技，游戏开始时，你亮出此武将牌并执行一个额外的回合。",
+	[":zhenhan"] = "当你受到伤害后，你可以在当前角色回合结束后执行一个额外的回合。",
 -----msg-----
 	["#yaowu"] = "%from 发动技能“耀武”，此次伤害无效。",
 -----invoke-----
@@ -6085,6 +6126,7 @@ sgs.LoadTranslationTable{
 	["zishuPush"] = "请将其他手牌置于牌堆顶",
 	["qizhi-choice"] = "你可以发动“奇制”<br/> <b>操作提示</b>: 选择一名不是此【%arg】目标的角色→点击确定<br/>",
 	["jinqu:HandNumMax"] = "你可以发动“进趋”摸两张牌，然后将手牌弃置至 %arg 张",
+	["wenguaPush"] = "请选择一张牌，将其置于牌堆顶或牌堆底",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
@@ -6101,6 +6143,8 @@ sgs.LoadTranslationTable{
 	["enemy_discard"] = "所有与你势力不同的角色弃置一张牌",
 	["sanyao_benefit"] = "令对方该手牌不计入手牌数",
 	["sanyao_not_benefit"] = "令对方不能弃置此牌",
+	["pile_top"] = "置于牌堆顶",
+	["pile_bottom"] = "置于牌堆底",
 -----move-----
 	["zongxuan#up"] = "弃置",
 	["zongxuan#down"] = "置于牌堆顶",
