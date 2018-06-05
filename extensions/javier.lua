@@ -399,7 +399,7 @@ fuzhuCard = sgs.CreateSkillCard{
 			local id = room:getDrawPile():at(room:getDrawPile():length()-1)
 			local move = sgs.CardsMoveStruct(id, nil, sgs.Player_PlaceTable, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, source:objectName(), "fuzhu", ""))
 			room:moveCardsAtomic(move, true)
-			room:getThread():delay(200)
+			room:getThread():delay(500)
 			local card = sgs.Sanguosha:getCard(id)
 			if (card:isBlack() and card:isKindOf("TrickCard") and not card:isKindOf("Collateral") and 
 				not card:isKindOf("Nullification") and not card:isKindOf("FightTogether") and 
@@ -5653,6 +5653,8 @@ huangyinCard = sgs.CreateSkillCard{
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)
+		room:broadcastSkillInvoke("huangyin")
+		room:notifySkillInvoked("huangyin")
 		local to = targets[1]
 		room:askForDiscard(to, self:objectName(), 1, 1, false, true)
 		if to:getHandcardNum() > source:getHandcardNum() then

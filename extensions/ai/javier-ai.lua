@@ -3623,3 +3623,121 @@ sgs.ai_skill_invoke.jinqu = function(self, data)
 		end
 	end
 end 
+
+-----徐氏-----
+sgs.ai_use_value.fuzhuCard = 2
+sgs.ai_use_priority.fuzhuCard = 3
+local fuzhu_skill = {}
+fuzhu_skill.name = "fuzhu"
+table.insert(sgs.ai_skills, fuzhu_skill)
+fuzhu_skill.getTurnUseCard = function(self)
+	if not self:willShowForAttack() then return nil end
+	if self.player:getHp() == 0 then return nil end
+	return sgs.Card_Parse("#fuzhuCard:.:&fuzhu")
+end
+sgs.ai_skill_use_func["#fuzhuCard"] = function(card, use, self)
+	local source = self.player
+	local room = self.room
+	local to 
+	local big_kingdoms = source:getBigKingdoms("fuzhu")
+	for _, p in sgs.qlist(room:getOtherPlayers(source)) do 
+		if self:isEnemy(p) and p:isMale() and source:inMyAttackRange(p) then
+			if table.contains(big_kingdoms,p:getKingdom()) then 
+				to = p 
+				break
+			end
+		end
+	end
+	if not to then
+		for _, p in sgs.qlist(room:getOtherPlayers(source)) do 
+			if self:isEnemy(p) and p:isMale() and source:inMyAttackRange(p) then
+				to = p 
+				break
+			end
+		end
+	end
+	local targets = sgs.SPlayerList()
+	if to then
+		targets:append(to)
+	end
+	if targets:length() == 1 then
+		use.card = card
+		if use.to then use.to = targets end
+	end
+end
+sgs.ai_skill_invoke.wengua = function(self, data)
+	local room = self.room
+    return true
+end
+sgs.ai_skill_exchange.wengua = function(self, pattern, max_num, min_num, expand_pile)
+	local source = self.player
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	local room = self.room
+	local to = room:getCurrent()
+	local judge_card = 0      --0代表无，1代表乐不思蜀，2代表兵粮寸断，3代表闪电
+	local to_put = {}
+	for _, c in sgs.qlist(to:getNextAlive():getJudgingArea()) do 
+		if c:isKindOf("Indulgence") then
+			judge_card = 1
+		elseif c:isKindOf("SupplyShortage") then
+			judge_card = 2
+		elseif c:isKindOf("Lightning") then
+			judge_card = 3
+		end
+	end
+	if (judge_card == 1 or judge_card == 2) then
+		if self:isFriend(to:getNextAlive()) then
+			for _,c in ipairs(cards) do
+				if (judge_card == 1 and c:getSuit() == sgs.Card_Heart) or (judge_card == 2 and c:getSuit() == sgs.Card_Club) then
+					source:setTag("wenguaPushTag", sgs.QVariant(true))
+					table.insert(to_put, c:getEffectiveId())
+					return to_put
+				elseif judge_card == 3 and (c:getSuit() ~= sgs.Card_Spade or (c:getSuit() == sgs.Card_Spade and (c:getNumber() < 2 or c:getNumber() > 9))) then
+					source:setTag("wenguaPushTag", sgs.QVariant(true))
+					table.insert(to_put, c:getEffectiveId())
+					return to_put
+				end
+			end
+		elseif self:isEnemy(to:getNextAlive()) then
+			for _,c in ipairs(cards) do
+				if (judge_card == 1 and c:getSuit() ~= sgs.Card_Heart) or (judge_card == 2 and c:getSuit() ~= sgs.Card_Club) then
+					source:setTag("wenguaPushTag", sgs.QVariant(true))
+					table.insert(to_put, c:getEffectiveId())
+					return to_put
+				elseif judge_card == 3 and (c:getSuit() == sgs.Card_Spade and (c:getNumber() >= 2 and c:getNumber() <= 9)) then
+					source:setTag("wenguaPushTag", sgs.QVariant(true))
+					table.insert(to_put, c:getEffectiveId())
+					return to_put
+				end
+			end
+		end
+	end
+	for _,c in ipairs(cards) do
+		if (c:isBlack() and c:isKindOf("TrickCard") and not c:isKindOf("Collateral") and 
+				not c:isKindOf("Nullification") and not c:isKindOf("FightTogether") and 
+				not c:isKindOf("ThreatenEmperor") and not c:isKindOf("Lightning") and not c:isKindOf("BurningCamps")) or 
+				c:isKindOf("Slash") then
+			source:setTag("wenguaPushTag", sgs.QVariant(false))
+			table.insert(to_put, c:getEffectiveId())
+			return to_put
+		end
+	end
+	for _,c in ipairs(cards) do
+		table.insert(to_put, c:getEffectiveId())
+		return to_put
+	end
+	return {}
+end
+sgs.ai_skill_choice["wengua"] = function(self, choices, data)
+    local source = self.player
+    local room = source:getRoom()
+	local choice = source:getTag("wenguaPushTag"):toBool()
+	if choice then
+		return pile_top
+	else
+		return pile_bottom
+	end
+	return false
+end
