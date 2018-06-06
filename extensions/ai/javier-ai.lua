@@ -3716,7 +3716,7 @@ sgs.ai_skill_exchange.wengua = function(self, pattern, max_num, min_num, expand_
 	end
 	for _,c in ipairs(cards) do
 		if (c:isBlack() and c:isKindOf("TrickCard") and not c:isKindOf("Collateral") and 
-				not c:isKindOf("Nullification") and not c:isKindOf("FightTogether") and 
+				not c:isKindOf("Nullification") and not c:isKindOf("FightTogether") and not card:isKindOf("ImperialOrder") and
 				not c:isKindOf("ThreatenEmperor") and not c:isKindOf("Lightning") and not c:isKindOf("BurningCamps")) or 
 				c:isKindOf("Slash") then
 			source:setTag("wenguaPushTag", sgs.QVariant(false))
@@ -3740,4 +3740,301 @@ sgs.ai_skill_choice["wengua"] = function(self, choices, data)
 		return pile_bottom
 	end
 	return false
+end
+
+------陈宫-----
+
+mingce_skill = {}
+mingce_skill.name = "mingce"
+table.insert(sgs.ai_skills, mingce_skill)
+mingce_skill.getTurnUseCard = function(self)
+	if self.player:hasUsed("#mingceCard") then return end
+	if not self:willShowForAttack() then return end
+
+	local card
+	if self:needToThrowArmor() then
+		card = self.player:getArmor()
+	end
+	if not card then
+		local hcards = self.player:getCards("h")
+		hcards = sgs.QList2Table(hcards)
+		self:sortByUseValue(hcards, true)
+
+		for _, hcard in ipairs(hcards) do
+			if hcard:isKindOf("Slash") then
+				if self:getCardsNum("Slash") > 1 then
+					card = hcard
+					break
+				else
+					local dummy_use = { isDummy = true, to = sgs.SPlayerList() }
+					self:useBasicCard(hcard, dummy_use)
+					if dummy_use and dummy_use.to and (dummy_use.to:length() == 0
+							or (dummy_use.to:length() == 1 and not self:hasHeavySlashDamage(self.player, hcard, dummy_use.to:first()))) then
+						card = hcard
+						break
+					end
+				end
+			elseif hcard:isKindOf("EquipCard") then
+				card = hcard
+				break
+			end
+		end
+	end
+	if not card then
+		local ecards = self.player:getCards("e")
+		ecards = sgs.QList2Table(ecards)
+
+		for _, ecard in ipairs(ecards) do
+			if ecard:isKindOf("Weapon") or ecard:isKindOf("OffensiveHorse") then
+				card = ecard
+				break
+			end
+		end
+	end
+	if card then
+		card = sgs.Card_Parse("#mingceCard:" .. card:getEffectiveId() .. ":&mingce")
+		return card
+	end
+
+	return nil
+end
+sgs.ai_skill_use_func["#mingceCard"] = function(card, use, self)
+	local target
+	local friends = self.friends_noself
+	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+	local slash_target
+
+	local canmingceTo = function(player)
+		local canGive = not self:needKongcheng(player, true)
+		return canGive or (not canGive and self:getEnemyNumBySeat(self.player, player) == 0)
+	end
+
+	local real_card = sgs.Sanguosha:getCard(card:getEffectiveId())
+	self:sort(self.enemies, "defense")
+	local _, friend = self:getCardNeedPlayer({real_card}, friends, "mingce")
+	if friend and self:isFriend(friend) and canmingceTo(friend) then
+		for _, enemy in ipairs(self.enemies) do
+			if friend:canSlash(enemy) and not self:slashProhibit(slash, enemy) and sgs.getDefenseSlash(enemy, self) <= 2
+					and self:slashIsEffective(slash, enemy) and sgs.isGoodTarget(enemy, self.enemies, self)
+					and enemy:objectName() ~= self.player:objectName() then
+				target = friend
+				slash_target = enemy
+				break
+			end
+		end
+	end
+	
+	if not target then
+		for _, friend in ipairs(friends) do
+			if canmingceTo(friend) then
+				for _, enemy in ipairs(self.enemies) do
+					if friend:canSlash(enemy) and not self:slashProhibit(slash, enemy) and sgs.getDefenseSlash(enemy, self) <= 2
+							and self:slashIsEffective(slash, enemy) and sgs.isGoodTarget(enemy, self.enemies, self)
+							and enemy:objectName() ~= self.player:objectName() then
+						target = friend
+						slash_target = enemy
+						break
+					end
+				end
+			end
+			if target then break end
+		end
+	end
+
+	if not target then
+		self:sort(friends, "defense")
+		local _, friend = self:getCardNeedPlayer({real_card}, friends, "mingce")
+		if friend and self:isFriend(friend) and canmingceTo(friend) then  --getCardNeedPlayer可能破空城
+			target = friend
+		end
+	end
+
+	if not target then
+		self:sort(friends, "defense")
+		for _, friend in ipairs(friends) do
+			if canmingceTo(friend) then
+				target = friend
+				break
+			end
+		end
+	end
+
+	if target then
+		use.card = card
+		if use.to then
+			use.to:append(target)
+			if not slash_target then
+				local slash_targets = sgs.SPlayerList()
+				if self:slashIsAvailable(target) then
+					for _, p in sgs.qlist(self.room:getOtherPlayers(target)) do
+						if target:canSlash(p) then
+							slash_targets:append(p)
+						end
+					end
+				end
+				if not slash_targets:isEmpty() then
+					slash_target = sgs.ai_skill_playerchosen.zero_card_as_slash(self, slash_targets)
+				end
+			end
+			if slash_target then
+				use.to:append(slash_target)
+			end
+		end
+	end
+end
+sgs.ai_skill_choice.mingce = function(self, choices)
+	--local chengong = self.room:getCurrent()
+	local chengong = sgs.findPlayerByShownSkillName("mingce")  --防明鉴
+	if chengong and not self:isFriend(chengong) then return "draw" end
+	if not string.find(choices, "use") then return "draw" end  --防特殊情况（比如未通过二次合法性检测）
+	local target = self.player:getTag("mingceTarget"):toPlayer()
+	if not target then return "draw" end
+	if not self:isFriend(target) then
+		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		if not self:slashProhibit(slash, target) then return "use" end
+	end
+	return "draw"
+end
+sgs.ai_use_value.mingceCard = 5.9
+sgs.ai_use_priority.mingceCard = 4
+sgs.ai_card_intention.mingceCard = function(self, card, from, tos)
+	sgs.updateIntention(from, tos[1], -70)
+end
+sgs.ai_cardneed.mingce = sgs.ai_cardneed.equip
+sgs.ai_skill_invoke.zhichi = function(self, data)
+	local current = self.room:getCurrent()
+	if not current or current:isDead() then return false end
+	
+	--来自潜心
+	local threat = getCardsNum("SavageAssault", current, self.player) + getCardsNum("ArcheryAttack", current, self.player)
+	if not self:isFriend(current) then
+		threat = threat + getCardsNum("Duel", current, self.player)
+		if self:slashIsAvailable(current) and current:canSlash(self.player) and getCardsNum("Slash", current, self.player) > 0 then
+			threat = threat + (self:hasCrossbowEffect(current) and getCardsNum("Slash", current, self.player) or 1)
+		end
+		if not self.player:isNude() then
+			threat = threat + getCardsNum("Dismantlement", current, self.player)
+			if current:distanceTo(self.player) == 1 or current:hasShownSkill("qicai") then
+				threat = threat + getCardsNum("Snatch", current, self.player)
+			end
+		end
+		if not self.player:getEquips():isEmpty() and not self:needToThrowArmor() then
+			threat = threat + getCardsNum("Drowning", current, self.player)
+		end
+		if current:getNextAlive() and self.player:inFormationRalation(current:getNextAlive()) then  --Ralation醉了
+			threat = threat + getCardsNum("BurningCamps", current, self.player)
+		end
+	end
+	if threat >= 1 --[[and not self.player:hasSkill("Shibei")]] then return true end
+	
+	local benefit = getCardsNum("AmazingGrace", current, self.player)
+	if self.player:isWounded() then
+		benefit = benefit + getCardsNum("GodSalvation", current, self.player)
+	end
+	if self:isFriend(current) then
+		if (self.player:containsTrick("indulgence") or self.player:containsTrick("supply_shortage")) then
+			benefit = benefit + getCardsNum("Dismantlement", current, self.player)
+			if current:distanceTo(self.player) == 1 or current:hasShownSkill("qicai") then
+				benefit = benefit + getCardsNum("Snatch", current, self.player)
+			end
+		end
+		local slash = sgs.cloneCard("slash")  --防止isPriorFriendOfSlash报错
+		if self:isPriorFriendOfSlash(self.player, slash, current) and current:canSlash(self.player) and self:slashIsAvailable(current) and getCardsNum("Slash", current, self.player) > 0 then
+			benefit = benefit + (self:hasCrossbowEffect(current) and getCardsNum("Slash", current, self.player) or 1)
+		end
+	end
+	
+	return self:willShowForDefence() and benefit < 1
+end
+
+-----曹节-----
+sgs.ai_skill_invoke.shouxi = function(self, data)
+	local room = self.room
+    return true
+end
+sgs.ai_skill_invoke.huimin = function(self, data)
+	local room = self.room
+	local friend_num = 0 
+	local enemy_num = 0
+	for _, p in sgs.qlist(room:getAlivePlayers()) do 
+		if p:getHandcardNum() < p:getHp() then
+			if self:isFriend(p) then friend_num = friend_num + 1 
+			elseif self:isEnemy(p) then enemy_num = enemy_num + 1
+			end
+		end
+	end
+	if friend_num == 0 then return false end
+	if (friend_num <= 2 and friend_num + 2 >= enemy_num) or (friend_num > 2 and friend_num + 3 >= enemy_num) then
+		return true
+	end
+	return false
+end
+sgs.ai_skill_exchange.huimin = function(self, pattern, max_num, min_num, expand_pile)
+	local to_show = {}
+	local cards = self.player:getCards("h")
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	for _,c in ipairs(cards) do
+		if not (c:isKindOf("Peach") or c:isKindOf("Analeptic")) then
+			table.insert(to_show, c:getEffectiveId())
+		end
+		if #to_show >= min_num then break end
+	end
+	if #to_show < min_num then
+		for _,c in ipairs(cards) do
+			if not table.contains(to_show, c:getEffectiveId()) then
+				table.insert(to_show, c:getEffectiveId())
+			end
+			if #to_show >= min_num then break end
+		end
+	end
+	return to_show
+end
+sgs.ai_skill_playerchosen.huimin = function(self, targets)
+	local source = self.player
+	local room = self.room
+	local num = targets:length()
+	local target_list = {}
+	local target_sort_list = {}
+	for _, p in sgs.qlist(targets) do 
+		table.insert(target_list, p:objectName())
+	end
+	local current_player = source
+	local i = 1
+	while true do
+		if table.contains(target_list, current_player:objectName()) then
+			target_sort_list[i] = current_player
+			i = i + 1 
+		end
+		current_player = current_player:getNextAlive()
+		if #target_sort_list == #target_list then break end
+	end	
+	local friend_judge_list = {}
+	i = 1
+	for _, p in pairs(target_sort_list) do 
+		if self:isFriend(p) then
+			friend_judge_list[i] = 1 
+		else
+			friend_judge_list[i] = 0
+		end
+		i = i + 1
+	end
+	local max_num = 0
+	local max_value_player = -1
+	for j = 1, num, 1 do 
+		local value = 0
+		for k = 1, num, 1 do 
+			local index = k + j - 1
+			if index > num then index = index - num end
+			value = value + math.pow(2, num - k) * friend_judge_list[index]
+		end
+		if value > max_num then
+			max_num = value
+			max_value_player = j
+		end
+	end
+	if max_value_player ~= -1 then
+		return target_sort_list[max_value_player]
+	end
+	return targets:first()
 end
