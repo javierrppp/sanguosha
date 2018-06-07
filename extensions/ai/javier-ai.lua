@@ -245,8 +245,16 @@ end
 
 -----廖化-----
 
-sgs.ai_skill_invoke.fuli = function(self, data)
-    return true
+sgs.ai_skill_cardask["@fuli"] = function(self, data, pattern, target, target2)
+    local room = self.player:getRoom()
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards, true)
+	for _,card in pairs(cards) do
+		if card:isRed() then
+			return card:toString()
+		end
+	end
 end
 
 -----华雄-----
@@ -3594,7 +3602,7 @@ sgs.ai_skill_playerchosen.qizhi = function(self, targets)
 	end
 	return targets:first()
 end
-sgs.ai_skill_invoke.jinqu_damaged = function(self, data)
+sgs.ai_skill_invoke["#jinqu_damaged"] = function(self, data)
 	local room = self.room
 	room:getThread():delay(100)
     return true
@@ -3716,7 +3724,7 @@ sgs.ai_skill_exchange.wengua = function(self, pattern, max_num, min_num, expand_
 	end
 	for _,c in ipairs(cards) do
 		if (c:isBlack() and c:isKindOf("TrickCard") and not c:isKindOf("Collateral") and 
-				not c:isKindOf("Nullification") and not c:isKindOf("FightTogether") and not card:isKindOf("ImperialOrder") and
+				not c:isKindOf("Nullification") and not c:isKindOf("FightTogether") and not c:isKindOf("ImperialOrder") and
 				not c:isKindOf("ThreatenEmperor") and not c:isKindOf("Lightning") and not c:isKindOf("BurningCamps")) or 
 				c:isKindOf("Slash") then
 			source:setTag("wenguaPushTag", sgs.QVariant(false))
@@ -4037,4 +4045,335 @@ sgs.ai_skill_playerchosen.huimin = function(self, targets)
 		return target_sort_list[max_value_player]
 	end
 	return targets:first()
+end
+
+-----曹冲-----
+
+sgs.ai_skill_invoke.chengxiang = function(self)
+	if not self:willShowForMasochism() then return false end
+	return not self:needKongcheng(self.player, true)
+end
+function chengxiangDFS(cards, current, i)
+	if i > #cards then return {} end
+	local result = {}
+	local temp = (current ~= "") and current:split("+") or {}
+	table.insertTable(result, chengxiangDFS(cards, current, i + 1))
+	
+	local temp_int = {}
+	for _,id_str in ipairs(temp) do
+		table.insert(temp_int, tonumber(id_str))
+	end
+	if chengxiangAsMovePattern(temp_int, cards[i]) then
+		table.insert(temp, cards[i])
+		table.insert(result, table.concat(temp, "+"))
+		table.insertTable(result, chengxiangDFS(cards, table.concat(temp, "+"), i + 1))
+	end
+	return result
+end
+function evaluatechengxiangCards(self, card_str)
+	if card_str == "" then return 0 end
+	local cards = card_str:split("+")
+	local sum = 0
+	for _,id in ipairs(cards) do
+		sum = sum + self:cardNeed(sgs.Sanguosha:getCard(tonumber(id)))
+	end
+	return sum
+end
+function sortchengxiangChoicesByCardNeed(self, choices, inverse)
+	local values = {}
+	for _, choice in ipairs(choices) do
+		values[choice] = evaluatechengxiangCards(self, choice)
+	end
+
+	local compare_func = function(a,b)
+		local value1 = values[a]
+		local value2 = values[b]
+
+		if value1 ~= value2 then
+			if inverse then return value1 > value2 end
+			return value1 < value2
+		else  --牌数
+			local a_tab = a:split("+")
+			local b_tab = b:split("+")
+			if inverse then return #a_tab > #b_tab end
+			return #a_tab < #b_tab
+		end
+	end
+
+	table.sort(choices, compare_func)
+	
+	--已知bug：排序时是按未拿到手时单独地判断每张牌，如果第二张牌的need会随第一张牌的到手而减少则不会识别出来
+	--例如有时会拿2闪而不是1闪1酒，即使拿了1闪以后闪的need比酒低
+end
+sgs.ai_skill_movecards.chengxiang = function(self, upcards, downcards, min_num, max_num)
+	local upcards_copy = table.copyFrom(upcards)
+	local down = {}
+	
+	local choices = chengxiangDFS(upcards, "", 1)
+	sortchengxiangChoicesByCardNeed(self, choices)
+	for _,id_str in ipairs(choices[#choices]:split("+")) do
+		table.insert(down, tonumber(id_str))
+		table.removeAll(upcards_copy, tonumber(id_str))
+	end
+	
+	return upcards_copy, down
+end
+sgs.ai_skill_cardask["@renxin-card"] = function(self, data, pattern)
+	local dmg = data:toDamage()
+	if not self:willShowForDefence() and not self.player:willBeFriendWith(dmg.to) then return "." end  --同势力的就不管亮没亮将了，先救了再说
+	local invoke
+	if self:isFriend(dmg.to) then
+		if self:damageIsEffective_(dmg) and not self:getDamagedEffects(dmg.to, dmg.from, dmg.card and dmg.card:isKindOf("Slash"))
+			and not self:needToLoseHp(dmg.to, dmg.from, dmg.card and dmg.card:isKindOf("Slash")) then
+			invoke = true
+		elseif not self:toTurnOver(self.player) then
+			invoke = true
+		end
+	elseif self:objectiveLevel(dmg.to) == 0 and not self:toTurnOver(self.player) then
+		invoke = true
+	end
+	if invoke then
+		local equipCards = {}
+		for _, c in sgs.qlist(self.player:getCards("he")) do
+			if c:isKindOf("EquipCard") and self.player:canDiscard(self.player, c:getEffectiveId()) then
+				table.insert(equipCards, c)
+			end
+		end
+		if #equipCards > 0 then
+			self:sortByKeepValue(equipCards)
+			return equipCards[1]:getEffectiveId()
+		end
+	end
+	return "."
+end
+sgs.ai_cardneed.renxin = function(to, card, self)
+	for _,friend in ipairs(self.friends_noself) do
+		if self:isWeak(friend) then
+			return sgs.ai_cardneed.shensu(to, card, self)
+		end
+	end
+end
+function SmartAI:hasrenxinEffect(to, from, needFaceDown, damageNum, isSlash, slash, nature, simulateDamage)  --检测是否会导致无意义的酒杀之类
+	if isSlash and (not slash or not slash:isKindOf("Slash")) then
+		slash = self.player:objectName() == from:objectName() and self:getCard("Slash") or sgs.cloneCard("slash")
+	end
+	local damageStruct = {}
+	damageStruct.to = to or self.player
+	damageStruct.from = from or self.room:getCurrent()
+	damageStruct.nature = nature or sgs.DamageStruct_Normal
+	damageStruct.damage = damageNum or 1
+	damageStruct.card = slash
+	if slash and not nature then
+		if slash:isKindOf("FireSlash") then
+			damageStruct.nature = sgs.DamageStruct_Fire
+		elseif slash:isKindOf("ThunderSlash") then
+			damageStruct.nature = sgs.DamageStruct_Thunder
+		end
+	end
+	return self:hasrenxinEffect_(damageStruct, needFaceDown, simulateDamage)  --needFaceDown表示只考虑叠置的曹冲翻回来的情况（因为cost比较伤），但是实际上用到的地方全是false。。
+end
+function SmartAI:hasrenxinEffect_(damageStruct, needFaceDown, simulateDamage)
+	if type(damageStruct) ~= "table" and type(damageStruct) ~= "DamageStruct" and type(damageStruct) ~= "userdata" then self.room:writeToConsole(debug.traceback()) return end
+	if not damageStruct.to then self.room:writeToConsole(debug.traceback()) return end
+	local to = damageStruct.to
+	if to:hasFlag("AI_renxinTesting") then return false end
+	if to:getHp() ~= 1 then return false end
+	local nature = damageStruct.nature or sgs.DamageStruct_Normal
+	local damage = damageStruct.damage or 1
+	local from = damageStruct.from
+	local card = damageStruct.card
+	--if from:hasShownSkill("Jueqing") then return false end
+	
+	local caochong = sgs.findPlayerByShownSkillName("renxin")
+	if not caochong or (caochong:objectName() == to:objectName()) or not self:isFriend(caochong, to) then return false end
+	if getKnownCard(caochong, self.player, "EquipCard", false, "h") + caochong:getEquips():length() < 1 then return false end  --cardIsVisible判断有问题
+	local equips = getKnownCard(caochong, self.player, "EquipCard", false, "he", true)
+	if next(equips) and caochong:isJilei(equips[1]) then return false end
+	
+	if not self:toTurnOver(caochong) then return true end
+	if needFaceDown then return false end
+	
+	if simulateDamage then  --抄hasHeavySlashDamage、damageIsEffective_
+		if card and card:isKindOf("Slash") then
+			if (card and card:hasFlag("drank")) then
+				damage = damage + 1
+			elseif from:getMark("drank") > 0 then
+				damage = damage + from:getMark("drank")
+			end
+		end
+		--if from:hasShownSkill("Jueqing") then return false end
+		
+		if to:getMark("@gale") > 0 and nature == sgs.DamageStruct_Fire then damage = damage + 1 end
+		if to:getMark("@gale_ShenZhuGeLiang") > 0 and nature == sgs.DamageStruct_Fire then damage = damage + 1 end
+	
+		if card and card:isKindOf("Slash") then
+			if from:hasFlag("luoyi") then damage = damage + 1 end
+			if from:getMark("@LuoyiLB") > 0 then damage = damage + from:getMark("@LuoyiLB") end
+			if from:hasShownSkill("Anjian") and not to:inMyAttackRange(from) then damage = damage + 1 end
+			if from:hasWeapon("GudingBlade") and slash and to:isKongcheng() then damage = damage + 1 end
+		elseif card and card:isKindOf("Duel") then
+			if from:hasFlag("luoyi") then damage = damage + 1 end
+			if from:getMark("@LuoyiLB") > 0 then damage = damage + from:getMark("@LuoyiLB") end
+		end
+		
+		if to:hasShownSkill("mingshi") and from and not from:hasShownAllGenerals() then
+			damage = damage - 1
+		end
+		if to:hasShownSkills("jgyuhuo_pangtong|jgyuhuo_zhuque") and nature == sgs.DamageStruct_Fire then return false end
+		local jiaren_zidan = sgs.findPlayerByShownSkillName("jgchiying")
+		if jiaren_zidan and jiaren_zidan:isFriendWith(to) then
+			damage = 1
+		end
+	end
+	
+	if to:hasArmorEffect("PeaceSpell") and not IgnoreArmor(from, to) and not (from:hasWeapon("IceSword") and card and card:isKindOf("Slash")) and not from:hasShownSkills("zhiman|zhiman_GuanSuo") and nature ~= sgs.DamageStruct_Normal then return false end
+	if to:hasArmorEffect("Breastplate") and not IgnoreArmor(from, to) then return false end  --此时体力值为1，因此必能发动护心镜
+	if to:hasArmorEffect("Vine") and not IgnoreArmor(from, to) and nature == sgs.DamageStruct_Fire then
+		damage = damage + 1
+	end
+	if to:hasArmorEffect("SilverLion") and not IgnoreArmor(from, to) then
+		damage = 1
+	end
+	if damage > 1 then return true end  --伤害大于1点则曹冲必须仁心
+	if damage < 1 then return false end
+	
+	--if self:needToThrowArmor(caochong) or (caochong:hasShownSkills(sgs.lose_equip_skill) and caochong:canDiscard(caochong, "e")) then return true end
+	return false  --此函数目的仅仅是检测酒杀之类，因此不用考虑曹冲翻面是否值得等情况
+end
+sgs.renxin_keep_value = sgs.xiaoji_keep_value
+
+-----夏侯氏-----
+sgs.ai_skill_invoke.qiaoshi = function(self, data)
+	local room = self.room
+	local source = self.player
+	local to = room:getCurrent()
+	if self:isFriend(to) then
+		return true
+	end
+	if self:isWeak() then
+		if self:getCardsNum("Jink") + self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < 3 then
+			return true
+		end
+	end
+    return false
+end
+sgs.ai_skill_movecards.yanyu = function(self, upcards, downcards, min_num, max_num)
+	local yanyu_cards = sgs.IntList()
+	local upcards_copy = table.copyFrom(upcards)
+	for _, c in pairs(upcards_copy) do
+		yanyu_cards:append(c)
+	end
+	local down = {}
+	local spade_num, spade_value, heart_num, heart_value, club_num, club_value, diamond_num, diamond_value = 0,0,0,0,0,0,0,0
+	for _, c in sgs.qlist(yanyu_cards) do
+		local card = sgs.Sanguosha:getCard(c)
+		local value = 0
+		if card:isKindOf("Jink") then
+			if self:getCardsNum("Jink") == 0 then
+				value = 5.2
+			elseif self:getCardsNum("Jink") > 2 then
+				value = 3.1
+			else
+				value = 4.1
+			end
+		elseif card:isKindOf("Peach") then value = 7
+		elseif card:isKindOf("Slash") then 
+			if self:getCardsNum("Slash") == 0 and self.player:usedTimes("#yanyuCard") < 2 then
+				value = 6.2
+			else
+				value = 4
+			end
+		elseif card:isKindOf("Analeptic") then
+			if self:getCardsNum("Analeptic") == 0 then
+				value = 4.5
+			else
+				value = 3
+			end
+		elseif card:isKindOf("ExNihilo") or card:isKindOf("BefriendAttacking") then value = 5.5
+		elseif card:isKindOf("EightDiagram") or card:isKindOf("Indulgence") then value = 5.7
+		elseif card:isKindOf("Nullification") or card:isKindOf("JadeSeal") then value = 4.3
+		elseif card:isKindOf("ImperialOrder") or card:isKindOf("FightTogether") then value = 2
+		elseif card:isKindOf("EquipCard") or card:isKindOf("Snatch") then value = 3.7
+		else value = 3
+		end
+		if card:getSuit() == sgs.Card_Spade then 
+			spade_num = spade_num + 1 
+			spade_value = spade_value + value
+		elseif card:getSuit() == sgs.Card_Heart then 
+			heart_num = heart_num + 1
+			heart_value = heart_value + value
+		elseif card:getSuit() == sgs.Card_Club 
+			then club_num = club_num + 1
+			club_value = club_value + value
+		elseif card:getSuit() == sgs.Card_Diamond then 
+			diamond_num = diamond_num + 1
+			diamond_value = diamond_value + value
+		end
+	end
+	if self.player:hasSkill("jizhi") and card:isNDTrick() then value = value + 1.3 end
+	local max_value = spade_value
+	local max_suit = sgs.Card_Spade
+	if heart_value > max_value then 
+		max_value = heart_value
+		max_suit = sgs.Card_Heart
+	end
+	if club_value > max_value then 
+		max_value = club_value
+		max_suit = sgs.Card_Club
+	end
+	if diamond_value > max_value then 
+		max_value = diamond_value
+		max_suit = sgs.Card_Diamond
+	end
+	for _, c in sgs.qlist(yanyu_cards) do
+		local card = sgs.Sanguosha:getCard(c)
+		if card:getSuit() == max_suit then
+			table.insert(down, c)
+			table.removeOne(upcards_copy, c)
+		end
+	end
+	return upcards_copy, down
+end
+sgs.ai_use_value.yanyuCard = 17
+sgs.ai_use_priority.yanyuCard = 16.62
+local yanyu_skill = {}
+yanyu_skill.name = "yanyu"
+table.insert(sgs.ai_skills, yanyu_skill)
+yanyu_skill.getTurnUseCard = function(self)
+	if self.player:usedTimes("#yanyuCard") < 2 then
+		return sgs.Card_Parse("#yanyuCard:.:&yanyu")
+	end
+end
+sgs.ai_skill_use_func["#yanyuCard"] = function(card, use, self)
+	local source = self.player
+	local putcard ={}
+	local cards = self.player:getCards("h")
+	cards = sgs.QList2Table(cards)
+	for _, card in ipairs(cards) do
+		if card:isKindOf("Slash") then
+			table.insert(putcard,card:getEffectiveId())
+			break
+		end
+	end
+	if #putcard > 0 then
+		use.card = sgs.Card_Parse("#yanyuCard:" .. table.concat(putcard, "+") .. ":&yanyu")
+	end
+end
+sgs.ai_skill_playerchosen.yanyu = function(self, targets)
+	local source = self.player
+	local room = self.room
+	local weak_friend
+	for _, p in sgs.qlist(targets) do 
+		if self:isFriend(p) then
+			if p:isKongcheng() and p:hasShownSkill("kongcheng") and self.player:getNextAlive():objectName() ~= p:objectName() then continue end
+			if weak_friend then
+				if 2 * weak_friend:getHp() + weak_friend:getHandcardNum() + weak_friend:getEquips():length() > 2 * p:getHp() + p:getHandcardNum() + p:getEquips():length() then
+					weak_friend = p
+				end
+			else
+				weak_friend = p
+			end
+		end
+	end
+	return weak_friend
 end

@@ -40,6 +40,8 @@ xushi = sgs.General(extension, "xushi", "wu","3", false)
 wangji = sgs.General(extension, "wangji", "wei","3")
 caojie = sgs.General(extension, "caojie", "qun","3", false)
 chengong = sgs.General(extension, "chengong", "qun","3", false)
+caochong = sgs.General(extension, "caochong", "wei","3")
+xiahoushi = sgs.General(extension, "xiahoushi", "shu","3", false)
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -58,7 +60,7 @@ meng_dongzhuo = sgs.General(extension2, "meng_dongzhuo", "qun","4")
 
 --**********测试专用**********-----
 
-gaoda = sgs.General(extension2, "gaoda", "qun","100", true, true, false)
+gaoda = sgs.General(extension2, "gaoda", "shu","100", true, true, false)
 
 --===========================================函数区============================================--
 
@@ -147,6 +149,248 @@ end
 --===========================================技能区============================================--
 
 --**********智包**********-----
+-----夏侯氏-----
+
+function yanyuAsMovePattern(selected, to_select)
+	local can_move = true
+	local to_select_card = sgs.Sanguosha:getCard(to_select)
+	for _,id in ipairs(selected) do
+		local card = sgs.Sanguosha:getCard(id)
+		if card:getSuit() ~= to_select_card:getSuit() then
+			can_move = false
+		end
+	end
+	return can_move
+end
+yanyuCard = sgs.CreateSkillCard{
+	name = "yanyuCard",
+	skill_name = "yanyu",
+	will_throw = true,
+	target_fixed=true,
+	on_use = function(self, room, source, targets)
+		if not source:isAlive() then return false end
+		local num = source:getMaxHp()
+		if num > 5 then num = 5 end
+		local card_ids = room:getNCards(num, false)
+		local move = sgs.CardsMoveStruct()
+		move.card_ids = card_ids
+		move.to = source
+		move.to_place = sgs.Player_PlaceTable
+		move.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, source:objectName(), self:objectName(), nil)
+		room:moveCardsAtomic(move, true)
+		
+		local result = room:askForMoveCards(source, card_ids, sgs.IntList(), true, "yanyu", "yanyuAsMovePattern", self:objectName(), 1, num, false, true)
+		local dummy = sgs.DummyCard()
+		if not result.bottom:isEmpty() then
+			dummy:addSubcards(result.bottom)
+			source:obtainCard(dummy)
+		end
+		if not result.top:isEmpty() then
+			dummy:clearSubcards()
+			dummy:addSubcards(result.top)
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, source:objectName(), self:objectName(), nil)
+			room:throwCard(dummy, reason, nil)
+		end
+		dummy:deleteLater()
+		return false
+	end
+}
+yanyu = sgs.CreateOneCardViewAsSkill{
+	name = "yanyu",
+	view_filter = function(self, card)
+		return card:isKindOf("Slash")
+	end,
+	view_as = function(self, originalCard)
+		local card = yanyuCard:clone()
+		card:addSubcard(originalCard)
+		card:setSkillName(self:objectName())
+		card:setShowSkill(self:objectName())
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:usedTimes("#yanyuCard") < 2
+	end
+}
+yanyu_give = sgs.CreateTriggerSkill{
+	name = "#yanyu_give",
+	global = true,
+	events = {sgs.EventPhaseEnd},
+	frequency = sgs.Skill_NotFrequent,
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill("yanyu") then return "" end
+		if player:getPhase() == sgs.Player_Play then
+			if player:usedTimes("#yanyuCard") == 2 then
+				for _, p in sgs.qlist(room:getAlivePlayers()) do 
+					if p:isMale() then
+						return self:objectName()
+					end
+				end
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data)
+		local targets = sgs.SPlayerList()
+		for _, p in sgs.qlist(room:getAlivePlayers()) do 
+			if p:isMale() then
+				targets:append(p)
+			end
+		end
+		local to = room:askForPlayerChosen(player, targets, "yanyu", "yanyu-choose", true, true)
+		if to then
+			room:broadcastSkillInvoke("yanyu")
+			local d = sgs.QVariant()
+			d:setValue(to)
+			player:setTag("yanyueffect", d)
+			player:showGeneral(player:inHeadSkills(self:objectName()))
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		local to = player:getTag("yanyueffect"):toPlayer()
+		to:drawCards(2)
+		player:removeTag("yanyueffect")
+		return false
+	end
+}
+qiaoshi = sgs.CreateTriggerSkill{
+	name = "qiaoshi",
+	can_preshow = true,
+	frequency = sgs.Skill_NotFrequent,
+	events = sgs.EventPhaseStart,
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return "" end
+		local xiahoushi = room:findPlayersBySkillName(self:objectName())
+		for _, p in sgs.qlist(xiahoushi) do 
+			if player:objectName() ~= p:objectName() and player:getPhase() == sgs.Player_Finish and player:getHandcardNum() == p:getHandcardNum() then 
+				return self:objectName(), p
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if ask_who:askForSkillInvoke(self:objectName(), data) then
+			room:broadcastSkillInvoke(self:objectName())
+			return true 
+		end
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		ask_who:drawCards(1)
+		player:drawCards(1)
+		return false
+	end
+}
+xiahoushi:addSkill(qiaoshi)
+xiahoushi:addSkill(yanyu)
+xiahoushi:addSkill(yanyu_give)
+sgs.insertRelatedSkills(extension, "yanyu", "#yanyu_give")
+-----曹冲-----
+
+function chengxiangAsMovePattern(selected, to_select)
+	local sum = 0
+	for _,id in ipairs(selected) do
+		sum = sum + sgs.Sanguosha:getCard(id):getNumber()
+	end
+	if to_select ~= -1 then
+		sum = sum + sgs.Sanguosha:getCard(to_select):getNumber()
+	end
+	return sum <= 13
+end
+chengxiang = sgs.CreateTriggerSkill{
+	name = "chengxiang",
+	can_preshow = true,
+	frequency = sgs.Skill_Frequent,
+	events = sgs.Damaged,
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
+		return self:objectName()
+	end,
+	on_cost = function(self, event, room, player, data)
+		if player:askForSkillInvoke(self:objectName(), data) then
+			room:broadcastSkillInvoke(self:objectName(), player)
+			return true 
+		end
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data)
+		local card_ids = room:getNCards(4, false)
+		local move = sgs.CardsMoveStruct()
+		move.card_ids = card_ids
+		move.to = player
+		move.to_place = sgs.Player_PlaceTable
+		move.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, player:objectName(), self:objectName(), nil)
+		room:moveCardsAtomic(move, true)
+		
+		local numbers = {}
+		for _,id in sgs.qlist(card_ids) do
+			table.insert(numbers, sgs.Sanguosha:getCard(id):getNumber())
+		end
+		table.sort(numbers)
+		local max_cards, min_sum = 0, 0
+		for _,num in ipairs(numbers) do
+			min_sum = min_sum + num
+			if min_sum <= 13 then max_cards = max_cards + 1 end
+		end
+		
+		local result = room:askForMoveCards(player, card_ids, sgs.IntList(), true, self:objectName(), "chengxiangAsMovePattern", self:objectName(), 1, max_cards, false, true)
+		local dummy = sgs.DummyCard()
+		if not result.bottom:isEmpty() then
+			dummy:addSubcards(result.bottom)
+			player:obtainCard(dummy)
+		end
+		if not result.top:isEmpty() then
+			dummy:clearSubcards()
+			dummy:addSubcards(result.top)
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), nil)
+			room:throwCard(dummy, reason, nil)
+		end
+		dummy:deleteLater()
+		return false
+	end,
+}
+renxin = sgs.CreateTriggerSkill{
+	name = "renxin",
+	can_preshow = true,
+	events = {sgs.DamageInflicted},
+	can_trigger = function(self, event, room, player, data)
+		local damage = data:toDamage()
+		if damage.to and damage.to:isAlive() and (damage.to:getHp() == 1) then
+			local skill_list, player_list = {}, {}
+			for _,p in sgs.qlist(room:getOtherPlayers(damage.to)) do
+				if p:hasSkill(self:objectName()) and p:canDiscard(p, "he") then
+					table.insert(skill_list, self:objectName())
+					table.insert(player_list, p:objectName())
+				end
+			end
+			return table.concat(skill_list, "|"), table.concat(player_list, "|")
+		end
+		return ""
+		--[[elseif (event == sgs.ChoiceMade) and player:hasSkill(self:objectName()) then  --根据规则翻面已改为效果而非消耗
+			local data_list = data:toString():split(":")
+			if (#data_list > 3) and (data_list[3] == "@renxin-card") and (data_list[#data_list] ~= "_nil_") then
+				player:turnOver()
+			end
+		end]]
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if room:askForCard(ask_who, ".Equip", "@renxin-card:" .. player:objectName(), data, self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName(), ask_who)
+			return true 
+		end
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		ask_who:turnOver()
+		local msg = sgs.LogMessage()
+		msg.type, msg.from, msg.arg = "#renxin", player, self:objectName()
+		room:sendLog(msg)
+		return true
+	end,
+}
+caochong:addSkill(chengxiang)
+caochong:addSkill(renxin)
 
 -----曹节-----
 
@@ -594,7 +838,6 @@ jinqu = sgs.CreatePhaseChangeSkill{
 }
 jinqu_damaged = sgs.CreateTriggerSkill{
 	name = "#jinqu_damaged",
-	global = true,
 	events = {sgs.Damaged},
 	frequency = sgs.Skill_NotFrequent,
 	can_trigger = function(self, event, room, player, data)
@@ -602,7 +845,7 @@ jinqu_damaged = sgs.CreateTriggerSkill{
 		return self:objectName()
 	end,
 	on_cost = function(self, event, room, player, data)
-		if room:askForSkillInvoke(player,self:objectName(),data) then
+		if room:askForSkillInvoke(player,"jinqu",data) then
 			player:showGeneral(player:inHeadSkills(self:objectName()))
 			return true
 		end
@@ -3321,7 +3564,7 @@ tiandu_xizhicai = sgs.CreateTriggerSkill{
 		return false
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
-		room:broadcastSkillInvoke(self:objectName())
+		room:broadcastSkillInvoke("zaoshi")
 		local room = player:getRoom()
 		local judge = data:toJudge()
 		local card = judge.card
@@ -4937,10 +5180,7 @@ fuli = sgs.CreateTriggerSkill{
 		return self:objectName()
 	end,
 	on_cost = function(self, event, room, player, data,ask_who)
-		if not player:hasShownSkill(self:objectName()) and room:askForSkillInvoke(player,self:objectName(),data) then
-			return true
-		end
-		if player:hasShownSkill(self:objectName()) then
+	    if room:askForCard(player, ".|red", "@fuli", data, self:objectName()) then
 			return true
 		end
 		return false
@@ -6073,7 +6313,7 @@ zhenhan = sgs.CreateTriggerSkill{
 	end
 }
 gaoda:addSkill(zhenhan)
-gaoda:addSkill("rende")
+gaoda:addSkill("guidao")
 gaoda:addSkill("tiandu")
 gaoda:addSkill("yiji")
 gaoda:addSkill("beige")
@@ -6097,6 +6337,7 @@ hejin:addCompanion("hetaihou")
 maliang:addCompanion("masu")
 chengong:addCompanion("lvbu")
 caojie:addCompanion("liuxie")
+xiahoushi:addCompanion("zhangfei")
 
 --**********猛包**********-----
 
@@ -6121,11 +6362,16 @@ sgs.LoadTranslationTable{
 	["meng"] = "猛包",
 	--智包--
 	["zhangchunhua"] = "张春华",
+	["~zhangchunhua"] = "怎能如此对我。",
 	["#zhangchunhua"] = "冷血皇后",
 	["jueqing"] = "绝情",
 	[":jueqing"] = "当你造成伤害时，你可以指定一名角色为伤害来源。",
+	["$jueqing1"] = "无来无去，不悔不怨",
+	["$jueqing2"] = "你的死活，与我何干。",
 	["shangshi"] = "伤势",
 	[":shangshi"] = "弃牌阶段外，当你的手牌数小于X时，你可以将手牌补至X张（X为你已损失的体力值）。",
+	["$shangshi1"] = "自损八百，可伤敌一千。",
+	["$shangshi2"] = "无情者伤人，有情者自伤",
 	["zhangxiu"] = "张绣",
 	["#zhangxiu"] = "破羌将军",
 	["tusha"] = "突杀",
@@ -6137,80 +6383,142 @@ sgs.LoadTranslationTable{
 	["$jiaoxie1"] = "纵使你有三头六臂，没有兵器，也只是个任人宰割的羊",
 	["$jiaoxie2"] = "看你还怎么反抗",
 	["huaxiong"] = "华雄",
+	["~huaxiong"] = "皮厚不挡刀哇……",
 	["#huaxiong"] = "魔将",
 	["shiyong"] = "恃勇",
 	[":shiyong"] = "一名角色使用【杀】对你造成伤害后，若你明置了武将牌，其可以与你拼点，若你赢，你获得其的拼点牌；若你输，其获得你的拼点牌。",
+	["$shiyong1"] = "好大一股杀气啊！",
+	["$shiyong2"] = "好大一股酒气啊！",
 	["yaowu"] = "耀武",
 	[":yaowu"] = "限定技，一名角色将要受到伤害时，若其的体力值为1，你可以令其防止此伤害。",
+	["$yaowu1"] = "哼！先让你尝点甜头。",
+	["$yaowu2"] = "大人有大量，不和你计较。",
 	["sunhao"] = "孙皓",
+	["~sunhao"] = "命啊！命！……",
 	["#sunhao"] = "时日曷丧",
 	["canshi"] = "残蚀",
 	[":canshi"] = "摸牌阶段，你可改为摸X张牌（X为已受伤的角色数），然后当你本回合使用基本牌或锦囊牌时，你弃置一张牌。<br /><font color=\"pink\">注：当没有人受伤时，不能发动此技能。</font>",
+	["$canshi1"] = "众人与蝼蚁何异？哈哈哈……",
+	["$canshi2"] = "难道一切不在朕手中？",
 	["chouhai"] = "仇海",
 	[":chouhai"] = "锁定技，当你受到伤害时，若你没有手牌，此伤害+1。",
+	["$chouhai1"] = "哼，树敌三千又如何？",
+	["$chouhai2"] = "不发狂，就灭亡！",
 	["niujin"] = "牛金",
+	["~niujin"] = "这~包围圈太厚，老牛，尽力了……",
+	["#niujin"] = "独进的兵胆",
 	["cuorui"] = "挫锐",
 	[":cuorui"] = "锁定技，当你受到伤害后，你须将一张手牌置于牌堆顶。",
+	["$cuorui1"] = "区区乌合之众，如何困得住我！",
+	["$cuorui2"] = "今日就让你见识见识~老牛的厉害！",
 	["liewei"] = "裂围",
 	[":liewei"] = "你的回合外明置此武将牌时，你可以摸三张牌然后执行一个额外的出牌阶段。",
-	["#niujin"] = "独进的兵胆",
+	["$liewei1"] = "敌阵已乱，速速突围！",
+	["$liewei2"] = "杀你，如同碾死一只蚂蚁。",
 	["liaohua"] = "廖化",
-	["fuli"] = "伏枥",
-	[":fuli"] = "锁定技，大势力角色对你造成的伤害-1。",
+	["~liaohua"] = "今后就靠你们了。",
 	["#liaohua"] = "历尽沧桑",
+	["fuli"] = "伏枥",
+	[":fuli"] = "大势力角色对你造成伤害时，你可以弃置一张红色牌令此伤害-1。",
+	["$fuli1"] = "有老夫在，蜀汉就不会倒下。",
+	["$fuli2"] = "今天是个拼命的好日子，哈哈哈哈。",
 	["liubiao"] = "刘表",
+	["~liubiao"] = "优柔寡断，要不得啊！……",
 	["#liubiao"] = "跨蹈汉南",
 	["gushou"] = "固守",
 	[":gushou"] = "锁定技，其他角色计算与你的距离时，始终+x，x为你已损失体力值。你的手牌上限等于你的体力上限。",
+	["$gushou1"] = "江河霸主，何惧之有？",
+	["$gushou2"] = "荆襄之地，固若金汤！",
 	["bulianshi"] = "步练师",
+	["~bulianshi"] = "江之永矣，不可方思。",
 	["#bulianshi"] = "无冕之后",
 	["anxu"] = "安恤",
 	[":anxu"] = "出牌阶段限一次，你可以选择手牌数不等的两名其他角色：若如此做，手牌较少的角色正面朝上获得另一名角色的一张手牌。若此牌不为♠，你摸一张牌。 ",
+	["$anxu1"] = "君子乐胥，万邦之屏。",
+	["$anxu2"] = "和鸾雝雝，万福攸同。",
 	["zhuiyi"] = "追忆",
 	[":zhuiyi"] = "你死亡时，你可以令一名其他角色（除杀死你的角色）摸三张牌并回复1点体力。 ",
+	["$zhuiyi1"] = " 妾心所系，如月之恒。",
+	["$zhuiyi2"] = "终其永怀，恋心殷殷。",
 	["jianyong"] = "简雍",
+	["~jianyong"] = "两国交战，不斩...唔唔唔",
 	["#jianyong"] = "优游风议",
 	["qiaoshui"] = "巧说",
 	[":qiaoshui"] = "出牌阶段限一次，你可以与一名其他角色拼点，若你赢，视为你对其使用了一张无距离限制的【顺手牵羊】。",
+	["$qiaoshui1"] = " 合则两利，斗则两伤。",
+	["$qiaoshui2"] = "君且安坐，听我一言。",
 	["zongshi"] = "纵适",
 	[":zongshi"] = "当有拼点结束后，你可以获得其中的黑桃牌。<br /><font color=\"pink\">注：如果是“恃勇”发起的拼点，则“恃勇”的结算先于该技能。</font>",
+	["$zongshi1"] = "买卖不成，情义还在。",
+	["$zongshi2"] = "此等小事，何须挂耳？",
 	["xushu"] = "徐庶",
+	["~xushu"] = "母亲，孩儿尽孝来了……",
 	["#xushu"] = "化剑为犁",
 	["zhuhai"] = "诛害",
 	[":zhuhai"] = "主将技，一名其他角色的结束阶段开始时，若该角色本回合造成过伤害，你可以对其使用一张无距离限制的【杀】。然后若此杀被闪避，你摸一张牌。 ",
+	["$zhuhai1"] = "善恶有报，天道轮回！",
+	["$zhuhai2"] = "早知今日，何必当初！",
 	["wuyan"] = "无言",
 	[":wuyan"] = "副将技，此武将牌上单独的阴阳鱼个数-1，锁定技，每当你造成或受到伤害时，防止锦囊牌的伤害。 ",
+	["$wuyan1"] = "汝有良策，何必问我！",
+	["$wuyan2"] = "吾，誓不为汉贼献一策！",
 	["jujian"] = "举荐",
 	[":jujian"] = "副将技，结束阶段开始时，你可以弃置一张非基本牌并选择一名其他角色：若如此做，该角色选择一项：摸两张牌，或回复1点体力，或重置武将牌并将其翻至正面朝上。 ",
+	["$jujian1"] = "卧龙之才，远胜于我。",
+	["$jujian2"] = "天下大任，望君莫辞！",
 	["chenqun"] = "陈群",
+	["~chenqun"] = "吾身虽陨，典律昭昭",
 	["#chenqun"] = "万世臣表",
 	["dingpin"] = "定品",
 	[":dingpin"] = "当你受到伤害后，你可以令一名角色判定，若为黑，其摸等同于其已损失体力值张数的牌；若为红，你将武将牌叠置。",
+	["$dingpin1"] = "取才赋职，论能行赏。",
+	["$dingpin2"] = "定品寻良骥，中正探人杰。",
 	["faen"] = "法恩",
 	[":faen"] = "每当一名角色的武将牌叠置或横置时，你可以令其摸一张牌。然后若叠置或横置的角色是你，你可以令一名其他角色摸一张牌。 ",
+	["$faen1"] = "礼法容情，皇恩浩荡。",
+	["$faen2"] = "法理有度，恩威并施。",
 	["mizhu"] = "糜竺",
+	["~mizhu"] = "劣抵备主，我之罪也~",
 	["#mizhu"] = "挥金追义",
 	["jugu"] = "巨贾",
 	[":jugu"] = "你的回合开始时，你可以摸一张牌，然后你可以将一张牌置于牌堆顶。",
+	["$jugu1"] = "钱~要多少有多少！",
+	["$jugu2"] = "君子爱财，取之有道~",
 	["ziyuan"] = "资援",
 	[":ziyuan"] = "出牌阶段限一次，你可以令一名体力值为1的角色回复一点体力，或者令一名手牌数不大于1的角色摸一张牌。<br /><font color=\"pink\">注：如果你指定的角色两个条件都符合，那么即回复一点体力也摸一张牌。</font>",
+	["$ziyuan1"] = "区区薄礼，万望使君笑纳~",
+	["$ziyuan2"] = "雪中送炭，以解君愁。",
 	["liuxie"] = "刘协",
 	["#liuxie"] = "受困天子",
+	["~liuxie"] = "为什么不把复兴汉室的权力交给我？",
 	["mizhao"] = "密诏",
 	[":mizhao"] = "出牌阶段限一次，你可以将所有手牌（至少一张）交给一名其他角色：若如此做，你令该角色与另一名由你指定的有手牌的角色拼点：若一名角色赢，视为该角色对没赢的角色使用一张【杀】。",
+	["$mizhao1"] = "此诏事关重大，切记小心行事。",
+	["$mizhao2"] = "爱卿世受皇恩，堪此重任。",
 	["tianming"] = "天命",
 	[":tianming"] = "每当你被指定为【杀】的目标时，你可以弃置两张牌，然后摸两张牌。若全场唯一的体力值最多的角色不是你，该角色也可以弃置两张牌，然后摸两张牌。",
+	["$tianming1"] = "皇汉国祚，千年不息。",
+	["$tianming2"] = "朕乃大汉皇帝，天命之子。",
 	["buzhi"] = "步骘",
+	["~buzhi"] = "交州已定，主公尽可放心。",
 	["#buzhi"] = "积跬靖边",
 	["hongde"] = "弘德",
 	[":hongde"] = "当你获得或失去至少两张牌后，你可以令一名其他角色摸一张牌。每名角色的回合限四次。",
+	["$hongde1"] = "德无单行，福必双至",
+	["$hongde2"] = "江南重义，东吴尚德。",
 	["dingpan"] = "定判",
 	[":dingpan"] = "出牌阶段限X次（X为大势力角色数且至少为1），你可以令一名装备区里有牌的角色摸一张牌，然后其选择一项：1.令你弃置其装备区里的一张牌；2.获得其装备区里的所有牌，若如此做，你对其造成1点伤害。",
+	["$dingpan1"] = "从孙者生，从刘者死！",
+	["$dingpan2"] = "多行不义必自",
 	["litong"] = "李通",
+	["~litong"] = "战死沙场，快哉",
 	["#litong"] = "万亿吾独往",
 	["tuifeng"] = "推锋",
 	[":tuifeng"] = "当你受到1点伤害后，你可以将一张牌置于武将牌上，称为“锋”；准备阶段开始时，若你的武将牌上有“锋”，你移去所有“锋”，摸2X张牌，若如此做，你于此回合的出牌阶段内可以多使用X张【杀】（X为你此次移去的“锋”数）。",
+	["$tuifeng1"] = "摧锋陷阵，以杀贼首。",
+	["$tuifeng2"] = "敌锋之锐，我已尽知。",
 	["liru"] = "李儒",
+	["~liru"] = "如遇明主，大业必成！",
 	["#liru"] = "魔仕",
 	["juece"] = "绝策",
 	[":juece"] = "结束阶段开始时，你可以对一名没有手牌的角色造成1点伤害。",
@@ -6237,39 +6545,70 @@ sgs.LoadTranslationTable{
 	["$zhiyan1"] = "志节分明，折而不屈。",
 	["$zhiyan2"] = "直言劝谏，不惧祸否。",
 	["xizhicai"] = "戏志才",
+	["~xizhicai"] = "为何…不再给我…一点点时间…",
 	["#xizhicai"] = "负俗的天才",
 	["zaoshi"] = "早逝",
 	[":zaoshi"] = "锁定技，你视为拥有技能“天妒”，若你已有技能“天妒”，你将技能改为如下效果：当你的判定牌生效后，你可以获得之，然后你可以将其交给一名其他角色。",
+	["$zaoshi1"] = "天意，不可逆。",
+	["$zaoshi2"] = "既是如此。。。",
 	["tiandu_xizhicai"] = "天妒",
 	[":tiandu_xizhicai"] = "当你的判定牌生效后，你可以获得之，然后你可以将其交给一名其他角色。",
 	["xianfu"] = "先辅",
 	[":xianfu"] = "锁定技，你亮出武将牌时，你须选择一名其他角色，其成为“先辅”目标：当其受到伤害后，你受到等量的伤害；当其回复体力后，你回复等量的体力。",
+	["$xianfu1"] = "辅佐明君，从一而终！",
+	["$xianfu2"] = "吾于此生，竭尽所能。",
+	["$xianfu3"] = "春蚕至死，蜡炬成灰！",
+	["$xianfu4"] = "愿为主公，尽我所能。",
+	["$xianfu5"] = "赠人玫瑰，手有余香。",
+	["$xianfu6"] = "主公之幸，我之幸也。",
 	["chouce"] = "筹策",
 	[":chouce"] = "当你受到1点伤害后，你可以判定，若结果为：红色，令一名角色摸X张牌（若其为“先辅”选择的角色，X为2，否则为1）；黑色，弃置一名角色区域里的一张牌。",
+	["$chouce1"] = "一筹一划，一策一略。",
+	["$chouce2"] = "主公之忧，吾之所思也。",
 	["lord_sunquan"] = "孙权-君",
+	["~lord_sunquan"] = "父兄大绩，权实憾矣！",
 	["#lord_sunquan"] = "吴王光耀",
 	["shenduan"] = "慎断",
 	[":shenduan"] = "出牌阶段，你可以将至多x张牌（x为已亮吴势力角色数且至少为2）以任意顺序至于牌堆顶，然后从牌堆底摸等量的牌。<br /><font color=\"pink\">注：其他角色能看到你置于牌堆顶的牌。</font>",
+	["$shenduan1"] = "不急，吾等必一击制敌",
+	["$shenduan2"] = "纵横捭阖，自有制衡之道",
 	["zaoli"] = "早立",
 	[":zaoli"] = "你明置武将牌后，你可以摸两张牌，回复一点体力并重置武将牌。",
+	["$zaoli1"] = "淡定，淡定。",
+	["$zaoli2"] = "带他出动，再做契议。",
 	["shouguan"] = "授官",
 	[":shouguan"] = "锁定技，你的回合结束后，或者“大都督”死亡后，若场上没有“大都督”且有其他存活的吴势力角色，你须指定一名其他吴势力角色成为“大都督”。“大都督”每有一点已损失体力值，视为吴势力角色数+1，“大都督”使用锦囊牌时，其可以令你摸一张牌。",
+	["$shouguan1"] = "不愧是朕的左臂右膀",
+	["$shouguan2"] = "得此良将，甚慰朕心",
 	["liyan"] = "李严",
+	["~liyan"] = "孔明这一走，我算是没指望了......",
 	["#liyan"] = "矜风流务",
 	["duliang"] = "督粮",
 	[":duliang"] = "阵法技，与你处于同一队列的角色成为【兵粮寸断】或者【过河拆桥】的目标时，你可以取消该目标。你出牌阶段的出杀次数+x（x为与你处于同一队列的其他角色数）。<br /><font color=\"pink\">注：如果队列只有你一个人，该技能也对你也生效。</font>",
+	["$duliang1"] = "粮草已到，请将军验看。",
+	["$duliang2"] = "告诉丞相，山路难走！请宽限几天。",
 	["fulin"] = "腹鳞",
 	[":fulin"] = "一名角色第一次濒死时，你可以摸两张牌；一名蜀势力的其他角色死亡时，你增加一点手牌上限。<br /><font color=\"pink\">注：蜀势力不包括野心家。</font>",
+	["$fulin1"] = "丞相丞相！你没看见我吗？",
+	["$fulin2"] = "我乃托孤重臣，却在这搞什么粮草！",
 	["zhugejin"] = "诸葛瑾",
+	["~zhugejin"] = "君臣不相负，来世复君臣",
 	["#zhugejin"] = "宛陵侯",
 	["hongyuan"] = "弘援",
 	[":hongyuan"] = "摸牌阶段，你可以少摸两张牌，然后选择一项：令所有与你势力相同的角色各摸一张牌，或者令所有与你势力不同的角色（包括暗将）各弃置一张牌。",
+	["$hongyuan1"] = "自舍其身，施于天下。",
+	["$hongyuan2"] = "诸将莫慌，粮草已到。",
 	["mingzhe"] = "明哲",
 	[":mingzhe"] = "当你于回合外因使用、打出或弃置而失去红色牌时，你可以摸等量的牌。",
+	["$mingzhe1"] = "塞翁失马，焉知非福",
+	["$mingzhe2"] = "明以洞察，哲以保身。",
 	["zhonghui"] = "钟会",
+	["~zhonghui"] = "伯约，让你失望了。",
 	["#zhonghui"] = "谋谟之勋",
 	["zili"] = "自立",
 	[":zili"] = "主将技，锁定技，限定技，你的回合结束后，你摸三张牌并回复一点体力，然后移除副将牌，将势力改为“野心家”并获得技能“劝降”。<br /><font color=\"pink\">劝降：当你的【杀】对一名其他角色造成伤害时，你令对方选择一项：交给你一张牌，或移除其副将牌并置于你的副将区。若你因此获得副将，你防止你造成的伤害，失去技能“大志”，并将此技能的第二个选项改为“失去一点体力”。</font>",
+	["$zili1"] = "欲取天下，当在此时！",
+	["$zili2"] = "时机已到，今日起兵！",
 	["quanxiang"] = "劝降",
 	[":quanxiang"] = "当你的【杀】对一名其他角色造成伤害时，若其已明置副将，你可以令对方选择一项：交给你一张装备牌，或移除其副将牌并置于你的副将区。若你因此获得副将，你防止你造成的伤害，失去技能“大志”，并将此技能的第二个选项改为“失去一点体力”。",
 	["dazhi"] = "大志",
@@ -6287,34 +6626,47 @@ sgs.LoadTranslationTable{
 	["~chengyu"] = "此诚报效国家之时，吾却休矣……" ,
 	["shefu"] = "设伏",
 	[":shefu"] = "出牌阶段限x次（x为你的已损失体力值且最少为1），你可以将一张手牌背面朝上置于一名其他角色的武将牌上（每种名称的牌只限一次，且不得是装备牌），称为“伏”。当一名角色使用或打出牌时，若其的“伏”里有相同的牌名，你弃置此“伏”并对其造成一点伤害，然后若该牌为非延时锦囊牌（无懈可击除外），该牌无效。你的回合开始时，若场上有“伏”在，你收回所有的“伏”。当你受到伤害后，若有造成伤害的牌，你重置该牌名称的限制次数。",
+	["$shefu1"] = "圈套已设，埋伏已完，只等敌军进来。",
+	["$shefu2"] = "如此天网，量你插翅也难逃",
 	["benyu"] = "贲育",
 	[":benyu"] = "当你受到伤害后，若伤害来源存活且你的手牌数：小于X，你可以将手牌补至X（至多为5）张；大于X，你可以弃置至少X+1张手牌，对伤害来源造成1点伤害。（X为伤害来源的手牌数）",
-	["@benyu-discard"] = "你可以发动“贲育”弃置至少 %arg 张手牌对 %dest 造成1点伤害",
-	["~benyu"] = "选择足量的手牌→点击确定",
+	["$benyu1"] = "天下大乱，群雄并起，必有命事。",
+	["$benyu2"] = "曹公智略乃上天所授",
 	["zumao"] = "祖茂",
+	["~zumao"] = "孙将军，已经安全了吧。" ,
 	["#zumao"] = "碧血染赤帻",
 	["yinbing"] = "引兵",
 	[":yinbing"] = "弃牌阶段结束时，你可以指定至多x名角色（x为你已损失体力值），你分别弃置指定角色的一张牌。",
+	["$yinbing1"] = "将军走此小道，追兵交我应付！",
+	["$yinbing2"] = "追兵凶猛，末将断后！",
 	["zhoucang"] = "周仓",
+	["~zhoucang"] = "为将军操刀牵马，此生无憾",
 	["#zhoucang"] = "披肝沥胆",
 	["zhongyong"] = "忠勇",
 	[":zhongyong"] = "当你使用的【杀】结算结束后，你可以将此【杀】或目标角色使用的所有【闪】交给一名不为此【杀】目标的其他角色，以此法获得红色牌的角色可以对你攻击范围内的一名角色使用一张【杀】（无距离限制）。",
 	["#zhongyong"] = "忠勇",
-	["@zhongyong"] = "你可以发动“忠勇”",
-	["~zhongyong"] = "选择【杀】或所有【闪】→选择一名其他角色→点击确定",
-	["@zhongyong-slash"] = "你可以对 %src 攻击范围内的角色使用一张【杀】",
+	["$zhongyong1"] = "驱刀飞血，直取寇首",
+	["$zhongyong2"] = "为将军提刀携马，万死不辞",
 	["caimao"] = "蔡瑁",
 	["#caimao"] = "荆州水师",
 	["shuishi"] = "水师",
 	[":shuishi"] = "阵法技，若你是被围攻角色，围攻角色对你使用【杀】或【水淹七军】时，你可以弃置一张手牌令此牌对你无效；若你是围攻角色，你对被围攻角色使用【杀】或【水淹七军】造成伤害时，你可以令此伤害+1。",
+	["$shuishi1"] = "神速进击，攻敌不备！",
+	["$shuishi2"] = "你已经死啦！",
 	["duozhu"] = "夺主",
 	[":duozhu"] = "锁定技，当一名其他角色阵亡时，你将其装备区内所有你相应位置没有的装备置于你的装备区。<br /><font color=\"pink\">注：此技能优先级高于行殇。</font>",
+	["$duozhu1"] = "缺失",
 	["hejin"] = "何进",
+	["~hejin"] = "不能遗祸世间",
 	["#hejin"] = "色厉内荏",
 	["mouzhu"] = "谋诛",
 	[":mouzhu"] = "锁定技，你杀死角色后的结算改为摸三张牌。",
+	["$mouzhu1"] = "汝等罪大恶极，快快伏法",
+	["$mouzhu2"] = "宦官专权，今必诛之",
 	["yanhuo"] = "延祸",
 	[":yanhuo"] = "你的回合结束后，可以指定一名角色，其摸x张牌并弃置x张牌（x为你已损失体力值）。",
+	["$yanhuo1"] = "你很快就笑不出来了",
+	["$yanhuo2"] = "乱世，才刚刚开始",
 	["miheng"] = "祢衡",
 	["#miheng"] = "鸷鹗啄孤凤",
 	["kuangcai"] = "狂才",
@@ -6322,14 +6674,20 @@ sgs.LoadTranslationTable{
 	["shejian"] = "舌剑",
 	[":shejian"] = "出牌阶段限一次，你可以指定至多x名其他角色（x为当前大势力角色数），你与所有指定角色同时展示一张手牌，然后你弃置所有与你展示的牌颜色相同的牌。",
 	["masu"] = "马谡",
+	["~masu"] = "败军之罪，万死难赎。",
 	["#masu"] = "街亭之殇",
 	["sanyao"] = "散谣",
 	[":sanyao"] = "一名角色的弃牌阶段开始时，若其需要弃置手牌，你可以展示其一张牌，然后你选择一项：令其于此弃牌阶段内该牌不计入手牌数；或者令其于此弃牌阶段内不能弃置此牌。",
+	["$sanyao1"] = "散谣惑敌不攻自破。",
+	["$sanyao2"] = "三人成虎事多有",
 	["huilei"] = "挥泪",
 	[":huilei"] = "锁定技，杀死你的角色获得技能“泪目”（锁定技，当你的体力值不小于3时，你不能弃置黑色手牌；当你的体力值为2时，你不能弃置黑桃手牌。）。",
+	["$huilei1"] = "谡，愿以死安大局！",
+	["$huilei2"] = "丞相视某如子，某以丞相为父。",
 	["leimu"] = "泪目",
 	[":leimu"] = "锁定技，当你的体力值不小于3时，你不能弃置黑色手牌；当你的体力值为2时，你不能弃置黑桃手牌。",
 	["lord_caocao"] = "曹操-君",
+	["~lord_caocao"] = "华佗何在？？？",
 	["#lord_caocao"] = "魏武东临",
 	["mouduan"] = "谋断",
 	[":mouduan"] = "当你受到伤害后，你可以令一名五良将视为对伤害来源使用一张【杀】，或令一名五谋臣执行一个额外的出牌阶段（若重叠则只看主将）。",
@@ -6340,24 +6698,40 @@ sgs.LoadTranslationTable{
 	["yitian1"] = "倚天",
 	[":yitian1"] = "锁定技，你的回合开始时，你装备【倚天剑】（替换原有装备）。",
 	["maliang"] = "马良",
+	["~maliang"] = "皇叔为何不听我之言！",
 	["#maliang"] = "白眉智士",
 	["yingyuan"] = "应援",
 	[":yingyuan"] = "每回合限x次（x为场上势力数），当你使用基本牌或非延时锦囊牌结算完毕后，你可以将之交给一名其他角色（相同牌名的牌每回合限一次）。",
+	["$yingyuan1"] = "慢着，让我来！",
+	["$yingyuan2"] = "弃暗投明，光耀门楣！",
 	["zishu"] = "自书",
 	[":zishu"] = "你的回合结束后，你可以观看牌堆顶的x张牌（x为你的手牌数且不得超过3），然后你可以选择获得其中任意张牌，并将等量的其他手牌置于牌堆顶。",
 	["zishu1"] = "自书",
+	["zishu2"] = "自书",
+	["$zishu1"] = "暴戾之气，伤人害己。",
+	["$zishu2"] = "休要再提战事。",
 	["xuezong"] = "薛综",
+	["~xuezong"] = "尔等，竟做如此有辱斯文之事。。",
 	["#xuezong"] = "东宫弦诵",
 	["funan"] = "复难",
 	[":funan"] = "其他角色使用或打出牌响应你使用的牌时，你可令其获得你使用的牌（其本回合不能使用或打出这张牌），然后你获得其使用或打出的牌。",
+	["$funan1"] = "礼尚往来，乃君子风范。",
+	["$funan2"] = "以子之矛，攻子之盾。",
 	["jiexun"] = "诫训",
 	[":jiexun"] = "结束阶段，你可令一名其他角色摸等同于场上方块牌数的牌，然后弃置X张牌（X为此前该技能发动过的次数）。若其因此法弃置了所有牌，则你失去“诫训”，然后你发动“复难”时，无须令其获得你使用的牌。",
+	["$jiexun1"] = "帝王应以社稷为重，以大官为主。",
+	["$jiexun2"] = "吾冒昧进谏，只求陛下思虑。",
 	["xushi"] = "徐氏",
+	["~xushi"] = "莫问前程凶吉，但求落幕无悔。",
 	["#xushi"] = "节义双全",
 	["wengua"] = "问卦",
+	["$wengua1"] = "卦不能佳，可须异日。",
+	["$wengua2"] = "阴阳相生相克，万事周而复始。",
 	[":wengua"] = "一名角色的回合结束后，若其已受伤，你可以摸一张牌，然后将一张牌置于牌堆顶或排队底。",
 	["fuzhu"] = "伏诛",
 	[":fuzhu"] = "出牌阶段，你可以指定一名攻击范围内的男性角色并依次展示牌堆底的x张牌（x为场上已受伤的角色数且最多不能超过你的体力上限），若展示的牌为【杀】或黑色锦囊牌（必须为有明确的指定目标且目标为非自己的锦囊牌），你视为对其使用。执行完毕后，你结束出牌阶段。<hr /><font color=\"pink\">以下几个锦囊牌无效：<br />【借刀杀人】、【敕令】、【挟天子以令诸侯】、【火烧连营】、【勠力同心】、【闪电】</font>",
+	["$fuzhu1"] = "我连做梦都在等这一天呢。",
+	["$fuzhu2"] = "既然来了，就别想走了。",
 	["#wangji"] = "经行合一",
 	["wangji"] = "王基",
 	["~wangji"] = "天下之事，必归大魏，可恨未能得见啊……",
@@ -6372,10 +6746,15 @@ sgs.LoadTranslationTable{
 	["$jinqu2"] = "通川聚粮，伐吴之业，当步步为营。",
 	["caojie"] = "曹节",
 	["#caojie"] = "献穆皇后",
+	["~caojie"] = "黄天，定不祚尔。。。",
 	["shouxi"] = "守玺",
 	[":shouxi"] = "当你成为【杀】的目标时，你可以翻开牌堆顶的一张牌，若此牌不为装备牌且你的武将牌上没有与此牌同名的牌，你将此牌置于武将牌上且该【杀】对你无效。",
+	["$shouxi1"] = "天子之位，乃归刘汉！",
+	["$shouxi2"] = "吾父功盖寰区，然且不敢篡窃神器。",
 	["huimin"] = "惠民",
 	[":huimin"] = "结束阶段，你可以摸X张牌（X为手牌数小于其体力值的角色数），然后展示等量的手牌，从你选择的一名角色开始依次获得其中一张。",
+	["$huimin1"] = "悬壶济世，施医救民。",
+	["$huimin2"] = "心系百姓，惠布山阳。",
 	["#chengong"] = "刚直壮烈",
 	["chengong"] = "陈宫",
 	["~chengong"] = "请出就戮！",
@@ -6387,36 +6766,79 @@ sgs.LoadTranslationTable{
 	[":zhichi"] = "锁定技，当你于回合外受到伤害后，【杀】和普通锦囊牌对你无效，直到回合结束。",
 	["$zhichi1"] = "如今之计，唯有退守，再做决断！",
 	["$zhichi2"] = "若吾早知如此。",
+	["#caochong"] = "仁爱的神童",
+	["caochong"] = "曹冲",
+	["~caochong"] = "子桓哥哥……",
+	["chengxiang"] = "称象",
+	[":chengxiang"] = "当你受到伤害后，你可以亮出牌堆顶的四张牌，然后获得其中至少一张点数之和不大于13的牌，并将其余的牌置入弃牌堆。",
+	["$chengxiang1"] = "依我看，小事一桩。",
+	["$chengxiang2"] = "孰重孰轻，一称便知。",
+	["renxin"] = "仁心",
+	[":renxin"] = "当其他角色受到伤害时，若其体力值为1，你可以弃置一张装备牌，叠置，然后防止此伤害。",
+	["$renxin1"] = "仁者爱人，人恒爱之。",
+	["$renxin2"] = "有我在，别怕。",
+	["xiahoushi"] = "夏侯氏",
+	["~xiahoushi"] = "原有来生，不负亲人。。。",
+	["#xiahoushi"] = "采缘撷睦",
+	["qiaoshi"] = "樵拾",
+	[":qiaoshi"] = "其他角色的结束阶段开始时，若你的手牌数与其相等，你可以与其各摸一张牌。",
+	["$qiaoshi1"] = "樵前情窦开，君后寻迹来。",
+	["$qiaoshi1"] = "樵心遇郎君，妾心连衣身。",
+	["yanyu"] = "燕语",
+	["yanyuCard"] = "燕语",
+	[":yanyu"] = "出牌阶段，你可以弃置一张【杀】并展示牌堆顶的x张牌（x为你的体力上限），然后你选择获得其中一种花色的任意张牌。出牌阶段结束时，若你于此阶段内发动过两次该技能，你可以选择一名男性角色，其摸两张牌。",
+	["$yanyu1"] = "伴君一生，不寂寞。",
+	["$yanyu2"] = "感君一回顾，思君朝与暮。",
 	--加强包--
 	["lizhan"] = "励战",
 	[":lizhan"] = "副将技，此武将牌上单独的阴阳鱼个数-1，回合结束时，你可以令任意名已受伤的角色摸一张牌。",
+	["$lizhan1"] = "行伍严整，百战不殆。",
+	["$lizhan2"] = "任你强横霸道，我自岿然不动。",
 	["lizhan-invoke"] = "你可以指定任意名已受伤的角色各摸一张牌",
 	["zhaxiang"] = "诈降",
 	[":zhaxiang"] = "弃牌阶段开始时，若你的手牌数大于你的体力值，你可以将x张手牌交给一名其他角色（x为你的手牌数减去你的体力值），然后若x不小于2，你对其造成一点伤害。",
 	["@zhaxiang-card"] = "你可以发动诈降",
 	["Ejianxiong"] = "奸雄",
 	[":Ejianxiong"] = "每当你受到伤害后，你可以选择一项：获得对你造成伤害的牌，或摸一张牌。",
+	["$Ejianxiong1"] = "燕雀安知鸿鹄之志。",
+	["$Ejianxiong2"] = "夫英雄者，胸怀大志，腹有良谋。",
 	["draw1"] = "摸一张牌",
 	["obtain"] = "获得造成伤害的牌",
 	["Ekuanggu"] = "狂骨",
 	[":Ekuanggu"] = "每当你对距离1以内的一名角色造成1点伤害后，你可以回复1点体力，或者摸一张牌。",
+	["$Ekuanggu1"] = "哼！也不看看我是何人。",
+	["$Ekuanggu2"] = "嗯哈哈哈哈哈哈，赢你，还不容易！",
 	["lianying"] = "连营",
 	[":lianying"] = "副将技，每当你失去最后的手牌后，你可以摸一张牌。你明置武将牌后，若你有技能“度势”，你失去技能“度势”。",
+	["$lianying1"] = "旧的不去，新的不来",
+	["$lianying2"] = "牌不是万能的，但是没牌是万万不能的。",
 	["danqi"] = "单骑",
 	[":danqi"] = "副将技，此武将牌上单独的阴阳鱼个数-1，当你的红色牌造成伤害时，你可以弃置对方的一张牌，然后若你弃置的牌与你使用的该牌花色相同，你摸一张牌。",
+	["$danqi1"] = "单骑护嫂千里，只为桃园之义。",
+	["$danqi2"] = "独身远涉，赤心归国。",
 	--猛包--
 	["meng_zhaoyun"] = "赵子龙",
+	["~meng_zhaoyun"] = "你们谁，还敢在上！",
 	["#meng_zhaoyun"] = "虎威将军",
 	["yajiao"] = "涯角",
 	[":yajiao"] = "锁定技，你的回合结束后，你获得牌堆顶x张牌中的所有的【杀】（x为存活角色数），然后若你获得的【杀】个数大于x/2，你将武将牌叠置。",
+	["$yajiao1"] = "策马驱前，斩敌当先。", 
+	["$yajiao2"] = "遍寻天下，但求一败。", 
 	["chongzhen"] = "冲阵",
 	[":chongzhen"] = "当你使用【杀】/成为【杀】的目标时，你可以弃置一张比此【杀】点数大的基本牌令此【杀】不可被闪避/对你无效。",
+	["$chongzhen1"] = "进退自如，游刃有余。", 
+	["$chongzhen2"] = "龙威虎胆，斩敌破阵。", 
 	["meng_luxun"] = "陆伯言",
+	["~meng_luxun"] = "我的未竟之业！",
 	["#meng_luxun"] = "江陵侯",
 	["shaoying"] = "烧营",
 	[":shaoying"] = "你的回合开始时，你可以视为对一名角色使用一张【火攻】。锁定技，当你对一名角色造成火属性伤害后，你可以视为对其下家使用一张【火攻】（若其有手牌）。",
+	["$shaoying1"] = "烈火声", 
+	["$shaoying2"] = "烈火声", 
 	["linggong"] = "领功",
 	[":linggong"] = "你的回合结束后，你可以摸x张牌（x为你此回合造成火属性伤害的次数，且最多不超过3）。",
+	["$linggong1"] = "谦谦君子，温润如玉。", 
+	["$linggong2"] = "满招损，谦受益。", 
 	["meng_dianwei"] = "古之恶来",
 	[":meng_dianwei"] = "忠勇死士",
 	["hengsao"] = "横扫",
@@ -6424,11 +6846,16 @@ sgs.LoadTranslationTable{
 	["tiequ"] = "铁躯",
 	[":tiequ"] = "出牌阶段限一次，你可以自减一点体力，然后随机装备一张牌堆中你对应装备区没有的装备。",
 	["meng_dongzhuo"] = "董仲颖",
+	["~meng_dongzhuo"] = "庶子！竟敢反我。。。",
 	["#meng_dongzhuo"] = "西凉鬼豪",
 	["huangyin"] = "荒淫",
 	[":huangyin"] = "出牌阶段限一次，你可以指定一名女性角色，其需弃置一张牌，然后若此时其手牌数大于你，你回复一点体力。",
+	["$huangyin1"] = "美女，美酒，美食，尽我享用。", 
+	["$huangyin2"] = "嗯。。。尽享天下美味，呵呵呵呵呵呵呵。。。", 
 	["weishe"] = "威慑",
 	[":weishe"] = "你使用【杀】或黑色锦囊牌指定目标后，可以令其中一名角色弃置一张牌。",
+	["$weishe1"] = "什么礼治纲常，我说的，就是纲常", 
+	["$weishe2"] = "不施严法怎治乱民？休得啰嗦！", 
 	--测试专用--
 	["gaoda"] = "高达",
 	["zhenhan"] = "震撼",
@@ -6444,6 +6871,7 @@ sgs.LoadTranslationTable{
 	["~miejiDiscard"] = "选择一张锦囊牌或两张非锦囊牌→点击确定",
 	["@zongxuan"] = "请选择至少一张牌置于牌堆顶", 
 	["@shenduan"] = "请将牌以任意顺序置于牌堆顶", 
+	["@fuli"] = "你可以弃置一张红色牌，令此伤害-1", 
 	["zhuiyi-invokex"] = "请指定一名角色(不能是杀死你的角色)，对其发动“追忆”",
 	["zhuiyi-invoke"] = "请指定一名角色，对其发动“追忆”",
 	["@jujian-card"] = "请指定一名角色，对其发动“举荐”",
@@ -6477,6 +6905,18 @@ sgs.LoadTranslationTable{
 	["#zhichiAvoid"] = "%from 的“%arg”被触发，【<font color=\"yellow\"><b>杀</b></font>】和普通锦囊牌对其无效",
 	["huiminExchange"] = "请展示%arg张手牌",
 	["huimin-choose"] = "请选择“惠民”的起始角色",
+	["@chengxiang"] = "请选择至少一张点数之和<=13的牌",
+	["@renxin-card"] = "你可以弃置一张装备牌发动“仁心”防止 %src 受到的伤害",
+	["#renxin"] = "%from 受到的伤害由于“%arg”效果被防止",
+	["@zhongyong"] = "你可以发动“忠勇”",
+	["~zhongyong"] = "选择【杀】或所有【闪】→选择一名其他角色→点击确定",
+	["@zhongyong-slash"] = "你可以对 %src 攻击范围内的角色使用一张【杀】",
+	["@benyu-discard"] = "你可以发动“贲育”弃置至少 %arg 张手牌对 %dest 造成1点伤害",
+	["~benyu"] = "选择足量的手牌→点击确定",
+	["yanyu-choose"] = "你可以选择一名男性角色，令其摸两张牌",
+	["@yanyu"] = "你可以获得其中一种花色的任意张牌",
+	["@zishu1"] = "你可以选择获得任意张牌",
+	["@zishu1"] = "请将牌以任意顺序置于牌堆顶",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
@@ -6497,6 +6937,10 @@ sgs.LoadTranslationTable{
 	["pile_bottom"] = "置于牌堆底",
 	["mingce:use"] = "对攻击范围内的一名角色使用一张【杀】",
 	["mingce:draw"] = "摸一张牌",
+	["chengxiang#up"] = "置入弃牌堆",
+	["chengxiang#down"] = "获得",
+	["yanyu#up"] = "弃置",
+	["yanyu#down"] = "获得",
 -----move-----
 	["zongxuan#up"] = "弃置",
 	["zongxuan#down"] = "置于牌堆顶",
