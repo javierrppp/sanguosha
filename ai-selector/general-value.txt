@@ -107,3 +107,12 @@ meng_zhaoyun							8
 meng_luxun							7
 meng_dianwei							7
 meng_dongzhuo							7
+caochong								8
+wangji								8
+xushi								7
+xiahoushi								7
+maliang								6
+chengong								4
+caojie								6
+xuezong								6
+masu								5
