@@ -159,3 +159,5 @@ wangji guojia									17 17
 wangji zhenji									16 16
 wangji xizhicai									18 18
 xiahoushi huangyueyin								16 15
+dengai simalang									18 18
+guanyu xiahoushi									16 17

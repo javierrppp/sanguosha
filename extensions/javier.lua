@@ -42,6 +42,7 @@ caojie = sgs.General(extension, "caojie", "qun","3", false)
 chengong = sgs.General(extension, "chengong", "qun","3", false)
 caochong = sgs.General(extension, "caochong", "wei","3")
 xiahoushi = sgs.General(extension, "xiahoushi", "shu","3", false)
+simalang = sgs.General(extension, "simalang", "wei","3")
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -149,6 +150,173 @@ end
 --===========================================技能区============================================--
 
 --**********智包**********-----
+
+-----司马朗-----
+
+junbing = sgs.CreateTriggerSkill{
+	name = "junbing",
+	can_preshow = true,
+	frequency = sgs.Skill_NotFrequent,
+	events = sgs.EventPhaseStart,
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return "" end
+		local simalang = room:findPlayersBySkillName(self:objectName())
+		if player:getPhase() ~= sgs.Player_Finish then return "" end
+		for _, p in sgs.qlist(simalang) do 
+			if p:objectName() == player:objectName() or (p:objectName() ~= player:objectName() and p:hasShownSkill(self:objectName())) then
+				if player:getHandcardNum() < 2 then 
+					local d = sgs.QVariant()
+					d:setValue(p)
+					player:setTag("junbingTag", d)
+					return self:objectName()
+				end
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		local to = ask_who:getTag("junbingTag"):toPlayer()
+		if ask_who:askForSkillInvoke(self:objectName(), data) then
+			room:notifySkillInvoked(to, self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
+			return true 
+		end
+		ask_who:removeTag("junbingTag")
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		ask_who:drawCards(1)
+		room:getThread():delay(300)
+		local to = ask_who:getTag("junbingTag"):toPlayer()
+		ask_who:removeTag("junbingTag")
+		if ask_who:objectName() == to:objectName() then return false end
+		local num = ask_who:getHandcardNum()
+		local dummy = sgs.DummyCard()
+		dummy:addSubcards(ask_who:getHandcards())
+		room:obtainCard(to, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, ask_who:objectName(), to:objectName(), self:objectName(), ""), false)
+		dummy:deleteLater() 
+		local exc_card = room:askForExchange(to, self:objectName(), num, num, "junbingExchange::"..ask_who:objectName()..":"..num, "", ".|.|.|hand")
+		if not exc_card then
+			exc_card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			for p = 0, num-1, 1 do
+				exc_card:addSubcard(to:getHandcards():at(p))
+			end
+		end
+		room:obtainCard(ask_who, exc_card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, to:objectName(), ask_who:objectName(), self:objectName(), ""), false)
+		return false
+	end
+}
+qujiCard = sgs.CreateSkillCard{
+	name = "qujiCard",
+	skill_name = "quji",
+    will_throw = true,
+	mute = true,
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() then
+			return false
+		elseif #targets == 0 then
+			return to_select:isWounded()
+		end
+		return false
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		local to = targets[1]
+		local recover = sgs.RecoverStruct()
+		recover.who = source
+		room:recover(to, recover)
+	end
+}
+qujiVS = sgs.CreateViewAsSkill{
+	name = "quji",
+	response_pattern = "@@quji",
+	view_filter = function(self, selected, to_select)
+		if sgs.Self:isJilei(to_select) then return false end
+		local num = sgs.Self:getHp()
+		local suit
+		if sgs.Self:getMark("qujispade") > 0 then
+			suit = sgs.Card_Spade
+		elseif sgs.Self:getMark("qujiheart") > 0 then
+			suit = sgs.Card_Heart
+		elseif sgs.Self:getMark("qujiclub") > 0 then
+			suit = sgs.Card_Club
+		elseif sgs.Self:getMark("qujidiamond") > 0 then
+			suit = sgs.Card_Diamond
+		end
+		if #selected < num then 
+			return to_select:getSuit() == suit
+		else
+			return false
+		end
+	end,
+	view_as = function(self, cards)
+		if #cards ~= sgs.Self:getHp() then return nil end
+		local card = qujiCard:clone()
+		card:setShowSkill(self:objectName())
+		for _, c in ipairs(cards) do
+			card:addSubcard(c)
+		end
+		return card
+	end,
+}
+quji = sgs.CreateTriggerSkill{
+	name = "quji",
+	can_preshow = true,
+	view_as_skill = qujiVS ,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.Damaged, sgs.DamageComplete},
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
+		if event == sgs.DamageComplete then
+			room:setPlayerMark(player, "qujispade", 0)
+			room:setPlayerMark(player, "qujiheart", 0)
+			room:setPlayerMark(player, "qujiclub", 0)
+			room:setPlayerMark(player, "qujidiamond", 0)
+			return ""
+		elseif event == sgs.Damaged then
+			if player:getHandcardNum() + player:getEquips():length() < player:getHp() then return "" end
+			local damage = data:toDamage()
+			if not damage.card then return "" end
+			if damage.card:getSuit() == sgs.Card_NoSuit then return "" end
+			local can_invoke = false
+			for _, p in sgs.qlist(room:getOtherPlayers(player)) do 
+				if p:isWounded() then
+					can_invoke = true
+				end
+			end
+			if can_invoke then	
+				room:addPlayerMark(player, "quji"..damage.card:getSuitString())
+				return self:objectName()
+			end
+			return ""
+		end
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		local suit
+		if player:getMark("qujispade") > 0 then
+			suit = "黑桃"
+		elseif player:getMark("qujiheart") > 0 then
+			suit = "红桃"
+		elseif player:getMark("qujiclub") > 0 then
+			suit = "梅花"
+		elseif player:getMark("qujidiamond") > 0 then
+			suit = "方片"
+		end
+		if room:askForUseCard(player, "@@quji", "@qujiCard:::"..player:getHp()..":"..suit, -1, sgs.Card_MethodDiscard) then
+			room:broadcastSkillInvoke(self:objectName())
+			return true 
+		end
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		return false
+	end
+}
+simalang:addSkill(junbing)
+simalang:addSkill(quji)
+
 -----夏侯氏-----
 
 function yanyuAsMovePattern(selected, to_select)
@@ -262,8 +430,9 @@ qiaoshi = sgs.CreateTriggerSkill{
 	can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive()) then return "" end
 		local xiahoushi = room:findPlayersBySkillName(self:objectName())
+		if player:getPhase() ~= sgs.Player_Finish then return "" end
 		for _, p in sgs.qlist(xiahoushi) do 
-			if player:objectName() ~= p:objectName() and player:getPhase() == sgs.Player_Finish and player:getHandcardNum() == p:getHandcardNum() then 
+			if player:objectName() ~= p:objectName() and player:getHandcardNum() == p:getHandcardNum() then 
 				return self:objectName(), p
 			end
 		end
@@ -838,6 +1007,7 @@ jinqu = sgs.CreatePhaseChangeSkill{
 }
 jinqu_damaged = sgs.CreateTriggerSkill{
 	name = "#jinqu_damaged",
+	global = true,
 	events = {sgs.Damaged},
 	frequency = sgs.Skill_NotFrequent,
 	can_trigger = function(self, event, room, player, data)
@@ -845,8 +1015,8 @@ jinqu_damaged = sgs.CreateTriggerSkill{
 		return self:objectName()
 	end,
 	on_cost = function(self, event, room, player, data)
-		if room:askForSkillInvoke(player,"jinqu",data) then
-			player:showGeneral(player:inHeadSkills(self:objectName()))
+		if room:askForSkillInvoke(player,"jinqu",sgs.QVariant("1")) then
+			player:showGeneral(player:inHeadSkills("jinqu"))
 			return true
 		end
 		return false
@@ -6789,6 +6959,17 @@ sgs.LoadTranslationTable{
 	[":yanyu"] = "出牌阶段，你可以弃置一张【杀】并展示牌堆顶的x张牌（x为你的体力上限），然后你选择获得其中一种花色的任意张牌。出牌阶段结束时，若你于此阶段内发动过两次该技能，你可以选择一名男性角色，其摸两张牌。",
 	["$yanyu1"] = "伴君一生，不寂寞。",
 	["$yanyu2"] = "感君一回顾，思君朝与暮。",
+	["simalang"] = "司马朗",
+	["~simalang"] = "微功未效，有辱国恩...",
+	["#simalang"] = "再世神农",
+	["junbing"] = "郡兵",
+	[":junbing"] = "一名角色的结束阶段开始时，若其手牌数不大于1，你令其选择是否摸一张牌，若其选择是，其将所有手牌交给你，若如此做，你将等量的牌交给该角色。",
+	["$junbing1"] = "郡国当有搜狩习战之备。",
+	["$junbing2"] = "男儿慷慨，军中豪迈。",
+	["quji"] = "去疾",
+	[":quji"] = "当你受到伤害后，你可以弃置x张与造成伤害的牌花色相同的牌并指定一名已受伤的其他角色（x为你的体力值），其恢复一点体力。",
+	["$quji1"] = "愿为将士，略尽绵薄。",
+	["$quji2"] = "若不去兵之疾，则将何以守国？",
 	--加强包--
 	["lizhan"] = "励战",
 	[":lizhan"] = "副将技，此武将牌上单独的阴阳鱼个数-1，回合结束时，你可以令任意名已受伤的角色摸一张牌。",
@@ -6917,6 +7098,10 @@ sgs.LoadTranslationTable{
 	["@yanyu"] = "你可以获得其中一种花色的任意张牌",
 	["@zishu1"] = "你可以选择获得任意张牌",
 	["@zishu1"] = "请将牌以任意顺序置于牌堆顶",
+	["junbingExchange"] = "请将%arg张手牌交给%dest",
+	["@@quji"] = "去疾",
+	["@qujiCard"] = "你可以弃置%arg张%arg2手牌并指定一名已受伤的其他角色，对其发动“去疾”",
+	["~quji"] = "指定一名已受伤的其他角色",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",

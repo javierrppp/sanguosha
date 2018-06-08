@@ -3602,12 +3602,13 @@ sgs.ai_skill_playerchosen.qizhi = function(self, targets)
 	end
 	return targets:first()
 end
-sgs.ai_skill_invoke["#jinqu_damaged"] = function(self, data)
+sgs.ai_skill_invoke.jinqu = function(self, data)
 	local room = self.room
-	room:getThread():delay(100)
     return true
 end
 sgs.ai_skill_invoke.jinqu = function(self, data)
+--jinqu_damaged
+	if data:toString() == "1" then return true end
 	local x = self.player:getMark("@qizhi")
 	local handcardNum = self.player:getHandcardNum()
 	if handcardNum <= x then
@@ -4050,7 +4051,6 @@ end
 -----曹冲-----
 
 sgs.ai_skill_invoke.chengxiang = function(self)
-	if not self:willShowForMasochism() then return false end
 	return not self:needKongcheng(self.player, true)
 end
 function chengxiangDFS(cards, current, i)
@@ -4376,4 +4376,87 @@ sgs.ai_skill_playerchosen.yanyu = function(self, targets)
 		end
 	end
 	return weak_friend
+end
+
+-----司马朗-----
+
+sgs.ai_skill_invoke.junbing = function(self, data)
+	local room = self.room
+	local source = self.player
+	local to = source:getTag("junbingTag"):toPlayer()
+	if self:isFriend(to) then
+		return true
+	end
+	if self:isEnemy(to) then
+		if to:hasShownSkill("tuntian") then
+			if to:hasShownSkill("jixi") then
+				return false
+			else
+				if to:isKongcheng() then
+					return true
+				end
+			end
+		else
+			if to:getHandcardNum() == 0 then
+				return true
+			elseif to:getHandcardNum() == 1 and (self:getCardsNum("Peach") == 0 or self:getCardsNum("Analeptic") == 0) then
+				return true
+			end
+		end
+	end
+    return false
+end
+sgs.ai_skill_use["@@quji"] = function(self, prompt)
+	self:sort(self.friends, "hp")
+	local num = self.player:getHp()
+	local target = nil
+	local has_xizhicai
+	for _, p in pairs(self.friends_noself) do
+		if p:isWounded() and p:hasShownSkill("xianfu") then
+			has_xizhicai = true
+		end
+	end
+	if has_xizhicai then
+		for _, p in pairs(self.friends_noself) do
+			if p:isWounded() and p:getMark("@fu") > 0 then
+				target = p
+				break
+			end
+		end
+	end
+	if not target then
+		for _, p in pairs(self.friends_noself) do
+			if p:objectName() ~= self.player:objectName() and p:isWounded() then
+				target = p
+				break
+			end
+		end
+	end
+	local suit
+	if self.player:getMark("qujispade") > 0 then
+		suit = sgs.Card_Spade
+	elseif self.player:getMark("qujiheart") > 0 then
+		suit = sgs.Card_Heart
+	elseif self.player:getMark("qujiclub") > 0 then
+		suit = sgs.Card_Club
+	elseif self.player:getMark("qujidiamond") > 0 then
+		suit = sgs.Card_Diamond
+	end
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards)
+	local need_card = {}
+	for _, c in pairs(cards) do
+		if not c:isKindOf("Peach") and c:getSuit() == suit then
+			table.insert(need_card, c:getEffectiveId())
+		end
+		if #need_card >= num then
+			break
+		end
+	end
+	if target and #need_card == num then
+	    local card_str = "#qujiCard:"..table.concat(need_card, "+")..":&quji->" .. target:objectName()
+		return card_str	
+	end
+	return "."
 end
