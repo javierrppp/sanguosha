@@ -4460,3 +4460,23 @@ sgs.ai_skill_use["@@quji"] = function(self, prompt)
 	end
 	return "."
 end
+
+-----刘琦-----
+
+sgs.ai_skill_invoke.tunjiang = function(self, data)
+	if self:needKongcheng() then
+		return false
+	end
+    return true
+end
+sgs.ai_skill_invoke.benzhi = function(self, data)
+    return true
+end
+sgs.ai_skill_invoke.wenji = function(self, data)
+	local room = self.room
+	local to = room:getCurrent()
+	if to:getHandcardNum() <= 2 and self:isWeak(to) then
+		return false
+	end
+    return true
+end
