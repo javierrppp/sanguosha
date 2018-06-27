@@ -161,15 +161,61 @@ end
 
 -----刘琦-----
 
-wenji = sgs.CreateTriggerSkill{
+wenji = sgs.CreateOneCardViewAsSkill{
 	name = "wenji",
+	view_filter = function(self, card)
+		local wenji_card_player_list = sgs.Self:property("wenjiProp"):toString():split("+")
+		for _,card_player_list in pairs(wenji_card_player_list) do
+			local card_player = card_player_list:split(",")
+			if card_player[1] == tostring(card:getId()) then return true end
+		end
+		return false
+	end,
+	view_as = function(self, originalCard)
+		local card = wenjiCard:clone()
+		card:addSubcard(originalCard)
+		card:setSkillName(self:objectName())
+		card:setShowSkill(self:objectName())
+		return card
+	end
+}
+wenjiCard = sgs.CreateSkillCard{
+	name = "wenjiCard",
+	skill_name = "wenji",
+	target_fixed = false,
+	will_throw = false,
+	handling_method = sgs.Card_MethodNone,
+	mute = true,
+	filter = function(self, targets, to_select, player)
+		local wenji_card_player_list = sgs.Self:property("wenjiProp"):toString():split("+")
+		local card_id = self:getSubcards():first()
+		for _,card_player_list in pairs(wenji_card_player_list) do
+			local card_player = card_player_list:split(",")
+			if card_player[1] == tostring(card_id) then
+				if card_player[2] == to_select:objectName() then
+					return true
+				end
+			end
+		end
+		return false
+	end,
+	feasible = function(self, targets)
+		return #targets == 3
+	end,
+	on_use = function(self, room, source, targets)
+	end
+}
+	
+wenji_ask_card = sgs.CreateTriggerSkill{
+	name = "#wenji_ask_card",
 	can_preshow = true,
+	global = true,
 	frequency = sgs.Skill_NotFrequent,
 	events = {sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.CardUsed, sgs.CardResponded},
 	can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive()) then return "" end
 		if event == sgs.EventPhaseStart then
-			local liuqi = room:findPlayersBySkillName(self:objectName())
+			local liuqi = room:findPlayersBySkillName("wenji")
 			if player:getPhase() ~= sgs.Player_Play then return "" end
 			if player:getRole() == "careerist" then return "" end
 			if not player:hasShownOneGeneral() then return "" end
@@ -184,14 +230,15 @@ wenji = sgs.CreateTriggerSkill{
 		elseif event == sgs.EventPhaseEnd then
 			if not player:hasSkill(self:objectName()) then return "" end
 			if player:getPhase() == sgs.Player_Finish then
-				player:setTag("wenjiTag", sgs.QVariant(""))
+				--player:setTag("wenjiTag", sgs.QVariant(""))
+				room:setPlayerProperty(player, "wenjiProp", sgs.QVariant(""))
 				room:setPlayerMark(player, "tunjiangMark", 0)  --屯江
 			end
 			return ""
 		elseif event == sgs.CardUsed or event == sgs.CardResponded then
 			if not player:hasSkill(self:objectName()) then return "" end
-			local wenji_card = player:getTag("wenjiTag"):toString():split("+")
-			sendMsg(room, player:getTag("wenjiTag"):toString())
+			--local wenji_card = player:getTag("wenjiTag"):toString():split("+")
+			local wenji_card = player:property("wenjiProp"):toString():split("+")
 			local card 
 			if event == sgs.CardUsed then
 				local use = data:toCardUse()
@@ -219,34 +266,43 @@ wenji = sgs.CreateTriggerSkill{
 				end
 				if not to then return false end
 				to:drawCards(2)
-				room:notifySkillInvoked(player, self:objectName())
-				room:broadcastSkillInvoke(self:objectName())
+				room:notifySkillInvoked(player, "wenji")
+				room:broadcastSkillInvoke("wenji", 2)
 				room:addPlayerMark(player, "tunjiangMark")   --屯江
-				player:setTag("wenjiTag", sgs.QVariant(table.concat(wenji_card, "+")))
+				--player:setTag("wenjiTag", sgs.QVariant(table.concat(wenji_card, "+")))
+				room:setPlayerProperty(player, "wenjiProp", sgs.QVariant(table.concat(wenji_card, "+")))
 			end
 		end
 	end,
 	on_cost = function(self, event, room, player, data, ask_who)
-		if ask_who:askForSkillInvoke(self:objectName(), data) then
-			room:notifySkillInvoked(ask_who, self:objectName())
-			room:broadcastSkillInvoke(self:objectName())
-			room:doAnimate(1, ask_who:objectName(), ask_who:objectName())
+		if ask_who:askForSkillInvoke("wenji", data) then
+			ask_who:showGeneral(ask_who:inHeadSkills("wenji"))
+			room:notifySkillInvoked(ask_who, "wenji")
+			room:broadcastSkillInvoke("wenji", 1)
+			room:doAnimate(1, ask_who:objectName(), player:objectName())
 			return true 
 		end
 		return false 
 	end,
 	on_effect = function(self, event, room, player, data, ask_who)
+		local d = sgs.QVariant()
+		d:setValue(ask_who)
+		player:setTag("wenjiAskTag", d)
 		local card = room:askForCard(player, "..", "@wenji-card:" .. ask_who:objectName(), sgs.QVariant(), sgs.Card_MethodNone)
+		player:removeTag("wenjiAskTag")
 		if card then
-			room:obtainCard(ask_who, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), ask_who:objectName(), self:objectName(), ""), true)
+			room:obtainCard(ask_who, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), ask_who:objectName(), "wenji", ""), true)
 			local str = card:getId() .. "," .. player:objectName()
-			local wenji_card_str = ask_who:getTag("wenjiTag"):toString()
+			--local wenji_card_str = ask_who:getTag("wenjiTag"):toString()
+			local wenji_card_str = ask_who:property("wenjiProp"):toString()
 			if wenji_card_str == "" then
-				ask_who:setTag("wenjiTag", sgs.QVariant(str))
+				--ask_who:setTag("wenjiTag", sgs.QVariant(str))
+				room:setPlayerProperty(ask_who, "wenjiProp", sgs.QVariant(str))
 			else
 				local wenji_card = wenji_card_str:split("+")
 				table.insert(wenji_card, str)
-				ask_who:setTag("wenjiTag", sgs.QVariant(table.concat(wenji_card, "+")))
+				--ask_who:setTag("wenjiTag", sgs.QVariant(table.concat(wenji_card, "+")))
+				room:setPlayerProperty(ask_who, "wenjiProp", sgs.QVariant(table.concat(wenji_card, "+")))
 			end
 		end
 	end
@@ -332,6 +388,8 @@ benzhi_distance = sgs.CreateDistanceSkill{
 	end
 }
 liuqi:addSkill(wenji)
+liuqi:addSkill(wenji_ask_card)
+sgs.insertRelatedSkills(extension, "wenji", "#wenji_ask_card")
 if liuqi_kingdom == "shu" then
 	liuqi:addSkill(tunjiang)
 elseif liuqi_kingdom == "qun" then
@@ -755,7 +813,7 @@ caochong:addSkill(renxin)
 shouxi = sgs.CreateTriggerSkill{
 	name = "shouxi",
 	can_preshow = true,
-	events = {sgs.TargetConfirming},
+	events = {sgs.TargetConfirming, sgs.EventLoseSkill},
 	frequency = sgs.Skill_NotFrequent,
 	can_trigger = function(self, event, room, player, data)
 		if not player or player:isDead() or not player:hasSkill(self) then return "" end
@@ -788,7 +846,7 @@ shouxi = sgs.CreateTriggerSkill{
 			end
 		end
 		if has == true then return false end
-		player:addToPile("shouxiPile", id)
+		player:addToPile("shouxiPile", id) 
 		local use = data:toCardUse()
 		local nullified_list = use.nullified_list
 		room:setEmotion(player, "cancel")
@@ -1104,6 +1162,13 @@ qizhi = sgs.CreateTriggerSkill{
 	end,	
 	on_effect = function(self, event, room, player, data)
 		local target = player:getTag("qizhieffect"):toPlayer()
+		--[[local jsonValue = {
+			10,
+			player:objectName(),
+			"zhoutai",
+			"buqu",
+		}
+		room:doBroadcastNotify(sgs.CommandType.S_COMMAND_LOG_EVENT, json.encode(jsonValue))--]]
 		if target:hasSkill("leimu") and target:getHp() > 1 then
 			local can = false
 			if target:getHp() == 2 then
@@ -1243,7 +1308,9 @@ wengua = sgs.CreateTriggerSkill{
 		if not player or player:isDead() then return "" end
 		if player:isWounded() and player:getPhase() == sgs.Player_Finish then
 			local xushi = room:findPlayerBySkillName(self:objectName())
-			return self:objectName(), xushi
+			if xushi then
+				return self:objectName(), xushi
+			end
 		end
 	end,
 	on_cost = function(self, event, room, player, data,ask_who)
@@ -1313,7 +1380,6 @@ fuzhuCard = sgs.CreateSkillCard{
 				break
 			end
 		end
-		sendMsg(room, "fuzhu"..x)
 		for i = 1, x, 1  do
 			if not to:isAlive() or room:getDrawPile():isEmpty() then return false end
 			local id = room:getDrawPile():at(room:getDrawPile():length()-1)
@@ -1427,7 +1493,6 @@ funan = sgs.CreateTriggerSkill{
 					local ids = {}
 					for _,id in sgs.qlist(move.card_ids) do
 						card = sgs.Sanguosha:getCard(id)
-						sendMsg(room, "card:"..card:objectName())
 						table.insert(ids, id)
 					end
 					if #ids > 0 then
@@ -1663,7 +1728,6 @@ jiexun = sgs.CreateTriggerSkill{
 		if num > 0 then
 			room:askForDiscard(to, self:objectName(), num, num, false, true)
 			player:gainMark("@xun")
-			sendMsg(room, "num:"..num.."to_card_num"..to_card_num)
 			if num >= to_card_num then
 				room:detachSkillFromPlayer(player,"jiexun")
 				room:setPlayerMark(player, "@xun", 0)
@@ -1986,7 +2050,6 @@ yingyuan = sgs.CreateTriggerSkill{
 			local ids = {}
 			for _,id in sgs.qlist(move.card_ids) do
 				card = sgs.Sanguosha:getCard(id)
-				sendMsg(room, "card:"..card:objectName())
 				table.insert(ids, id)
 			end
 			if #ids > 0 then
@@ -2317,7 +2380,7 @@ huilei = sgs.CreateTriggerSkill{
 	events = {sgs.Death},
 	can_trigger = function(self, event, room, player, data)
 		local death = data:toDeath()
-		if death.who:objectName() == player:objectName() and player:hasSkill(self:objectName()) and death.damage.from then
+		if death.who:objectName() == player:objectName() and player:hasSkill(self:objectName()) and death.damage and death.damage.from then
 			return self:objectName()
 		end
 		return ""
@@ -3222,7 +3285,7 @@ zili = sgs.CreateTriggerSkill{
 		player:removeGeneral(false)
 		room:setPlayerProperty(player, "role", sgs.QVariant("careerist"))
 		room:acquireSkill(player,"quanxiang")
-	end
+	end 
 }
 quanxiang = sgs.CreateTriggerSkill{
 	name = "quanxiang",
@@ -4213,7 +4276,7 @@ zhiyan = sgs.CreateTriggerSkill{
 			if to:isAlive() and (room:getCardOwner(ids:first()):objectName() == to:objectName()) and not to:isLocked(card) then
 				room:useCard(sgs.CardUseStruct(card, to, to))
 				local recover = sgs.RecoverStruct()
-				recover.who = player
+				recover.who = player 
 				room:recover(to, recover)
 			end
 		end
@@ -5031,7 +5094,6 @@ gushou_trigger = sgs.CreateTriggerSkill{
 	can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill("gushou")) then return "" end
 		if player:getPhase() == sgs.Player_Discard and player:getHandcardNum() > player:getMaxCards() and player:isWounded() then
-			sendMsg(room,"rrr")	
 			if not player:hasShownSkill("gushou") and room:askForSkillInvoke(player, "gushou", data) then
 				player:showGeneral(player:inHeadSkills("gushou"))
 			end
@@ -5675,7 +5737,7 @@ cuorui = sgs.CreateTriggerSkill{
 		local card = room:askForCard(player, "..!", "@cuorui", data, sgs.Card_MethodNone, player)
 		room:moveCardTo(card, player, sgs.Player_DrawPile)
 		return false
-	end
+	end 
 }
 liewei = sgs.CreateTriggerSkill{
 	name = "liewei",
@@ -6659,13 +6721,14 @@ zhenhan = sgs.CreateTriggerSkill{
 	events = {sgs.Damaged},
 	can_trigger = function(self, event, room, player, data)
 		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
-		sendMsg(room, player:objectName())
 		return self:objectName()
 	end,
 	on_cost = function(self, event, room, player, data,ask_who)
 		if room:askForSkillInvoke(ask_who,self:objectName(),data) then
 			player:showGeneral(player:inHeadSkills(self:objectName()))
-			player:gainAnExtraTurn()
+			local phases = sgs.PhaseList()
+			phases:append(sgs.Player_Play)
+			player:play(phases)
 		end
 		return false
 	end
@@ -7099,7 +7162,7 @@ sgs.LoadTranslationTable{
 	["qizhi"] = "奇制",
 	[":qizhi"] = "当你于回合内使用基本牌或锦囊牌指定目标后，你可以选择一名不是此牌目标的角色，弃置其一张牌，然后其摸一张牌。",
 	["$qizhi1"] = "声东击西，敌寇，一网成擒！",
-	["$qizhi2"] = "吾意不在此地，已遣别部出发。",
+	["$qizhi2"] = "吴懿不在此地，已遣别部出发。",
 	["jinqu"] = "进趋",
 	["#jinqu_damaged"] = "进趋",
 	[":jinqu"] = "结束阶段开始时，你可以摸两张牌，然后将手牌弃置至X张（X为此回合内你发动“奇制”的次数）。当你受到伤害后，你可以令所有与你势力相同的角色依次摸一张牌并弃置一张牌。",
@@ -7250,7 +7313,7 @@ sgs.LoadTranslationTable{
 	--测试专用--
 	["gaoda"] = "高达",
 	["zhenhan"] = "震撼",
-	[":zhenhan"] = "当你受到伤害后，你可以在当前角色回合结束后执行一个额外的回合。",
+	[":zhenhan"] = "当你受到伤害后，你可以执行一个额外的出牌阶段。",
 -----msg-----
 	["#yaowu"] = "%from 发动技能“耀武”，此次伤害无效。",
 -----invoke-----
@@ -7302,7 +7365,7 @@ sgs.LoadTranslationTable{
 	["@zhongyong"] = "你可以发动“忠勇”",
 	["~zhongyong"] = "选择【杀】或所有【闪】→选择一名其他角色→点击确定",
 	["@zhongyong-slash"] = "你可以对 %src 攻击范围内的角色使用一张【杀】",
-	["@benyu-discard"] = "你可以发动“贲育”弃置至少 %arg 张手牌对 %dest 造成1点伤害",
+	["@Benyu-discard"] = "你可以发动“贲育”弃置至少 %arg 张手牌对 %dest 造成1点伤害",
 	["~benyu"] = "选择足量的手牌→点击确定",
 	["yanyu-choose"] = "你可以选择一名男性角色，令其摸两张牌",
 	["@yanyu"] = "你可以获得其中一种花色的任意张牌",
@@ -7360,11 +7423,13 @@ sgs.LoadTranslationTable{
 	["@yaowu"] = "耀武",
 	["@zili"] = "自立",
 	["@xun"] = "训",
+	["@fulin"] = "腹麟",
 	
 	
 	
 	["#message"] = "%arg",
 	["#messagefrom"] = "%from %arg",
+	
 	
 	
 	

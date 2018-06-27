@@ -550,17 +550,19 @@ function sgs.gameProcess(update)
 	end
 
 	local process = "==="
-	if value[kingdoms[1]] >= sum_value1 and value[kingdoms[1]] > 0 then
-		local playerNum_1 = players:first():getPlayerNumWithSameKingdom("AI", kingdoms[1])
-		local playerNum_2 = players:first():getPlayerNumWithSameKingdom("AI", kingdoms[2])
-		if players:length() > 4 and (players:length() / 2 <= playerNum_1 or playerNum_2 + anjiang <= playerNum_1 or anjiang <= 1) then process = kingdoms[1] .. ">>>"
-		elseif anjiang <= players:length() / 2  - 1 then process = kingdoms[1] .. ">>"
-		elseif anjiang <= players:length() / 2 + 1 then process = kingdoms[1] .. ">" end
-	elseif value[kingdoms[1]] >= sum_value2 and value[kingdoms[1]] > 0 then
-		if anjiang == 0 then process = kingdoms[1] .. ">>"
-		elseif anjiang <= players:length() / 2 - 1 then process = kingdoms[1] .. ">" end
-	elseif value[kingdoms[1]] >= sum_value3 and value[kingdoms[1]] > 0 then
-		process = kingdoms[1] .. ">"
+	if #kingdoms > 0 then
+		if value[kingdoms[1]] >= sum_value1 and value[kingdoms[1]] > 0 then
+			local playerNum_1 = players:first():getPlayerNumWithSameKingdom("AI", kingdoms[1])
+			local playerNum_2 = players:first():getPlayerNumWithSameKingdom("AI", kingdoms[2])
+			if players:length() > 4 and (players:length() / 2 <= playerNum_1 or playerNum_2 + anjiang <= playerNum_1 or anjiang <= 1) then process = kingdoms[1] .. ">>>"
+			elseif anjiang <= players:length() / 2  - 1 then process = kingdoms[1] .. ">>"
+			elseif anjiang <= players:length() / 2 + 1 then process = kingdoms[1] .. ">" end
+		elseif value[kingdoms[1]] >= sum_value2 and value[kingdoms[1]] > 0 then
+			if anjiang == 0 then process = kingdoms[1] .. ">>"
+			elseif anjiang <= players:length() / 2 - 1 then process = kingdoms[1] .. ">" end
+		elseif value[kingdoms[1]] >= sum_value3 and value[kingdoms[1]] > 0 then
+			process = kingdoms[1] .. ">"
+		end
 	end
 
 	sgs.ai_process = process
@@ -3735,7 +3737,7 @@ function SmartAI:damageIsEffective_(damageStruct)
 		damage = damage - 1
 		if damage < 1 then return false end
 	end
-	local big_kingdoms = to:getBigKingdoms("fuli")
+	--[[local big_kingdoms = to:getBigKingdoms("fuli")
 	if to:hasShownSkill("fuli") and from and table.contains(big_kingdoms,from:getKingdom()) then 
 		if self:getCardsNum("Analeptic") > 0 and self:getCardsNum("Slash") > 0 then return true end
 		if from:getMark("drank") > 0 then return true end
@@ -3745,7 +3747,7 @@ function SmartAI:damageIsEffective_(damageStruct)
 		if from:hasSkill("tusha") and not to:isWounded() then return true end
 		damage = damage - 1
 		if damage < 1 then return false end
-	end
+	end--]]
 	if to:getMark("@fu") > 0 then
 		local xizhicai = sgs.findPlayerByShownSkillName("xianfu")
 		if self:isFriend(xizhicai) and self:isWeak(xizhicai) then

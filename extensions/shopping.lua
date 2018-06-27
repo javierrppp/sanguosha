@@ -1,4 +1,4 @@
-extension = sgs.Package("shopping", sgs.Package_GeneralPack)
+extension_shop = sgs.Package("shopping", sgs.Package_GeneralPack)
 
 
 local all_products = {"peachUse","treasure1","fireGun","thunder","slashUse","getJink","getAnaleptic","getAwaitExhausted","getFireAttack","no_careerist","bet","_discard","super_discard","box","coffer","extraProduct","upgradeSoldier","getYitianjian","getShengguangbaiyi","getJuechen","getNanmanxiang"}
@@ -73,15 +73,15 @@ skillList:append(shoupaishangxianmarklose)
 end
 sgs.Sanguosha:addSkills(skillList)	
 
-xx = sgs.General(extension, "xx", "wei","30",false,true,true) 
-jingruishibing1 = sgs.General(extension, "jingruishibing1", "wu","4",true,true,true)
-jingruishibing2 = sgs.General(extension, "jingruishibing2", "wu","4",false,true,true)
-yongmengshibing1 = sgs.General(extension, "yongmengshibing1", "wu","4",true,true,true)
-yongmengshibing2 = sgs.General(extension, "yongmengshibing2", "wu","4",false,true,true)
-texunshibing1 = sgs.General(extension, "texunshibing1", "wu","4",true,true,true)
-texunshibing2 = sgs.General(extension, "texunshibing2", "wu","4",false,true,true)
-moushi1 = sgs.General(extension, "moushi1", "wu","4",true,true,true)
-moushi2 = sgs.General(extension, "moushi2", "wu","4",false,true,true)
+xx = sgs.General(extension_shop, "xx", "wei","30",false,true,true) 
+jingruishibing1 = sgs.General(extension_shop, "jingruishibing1", "wu","4",true,true,true)
+jingruishibing2 = sgs.General(extension_shop, "jingruishibing2", "wu","4",false,true,true)
+yongmengshibing1 = sgs.General(extension_shop, "yongmengshibing1", "wu","4",true,true,true)
+yongmengshibing2 = sgs.General(extension_shop, "yongmengshibing2", "wu","4",false,true,true)
+texunshibing1 = sgs.General(extension_shop, "texunshibing1", "wu","4",true,true,true)
+texunshibing2 = sgs.General(extension_shop, "texunshibing2", "wu","4",false,true,true)
+moushi1 = sgs.General(extension_shop, "moushi1", "wu","4",true,true,true)
+moushi2 = sgs.General(extension_shop, "moushi2", "wu","4",false,true,true)
 
 texun = sgs.CreateTriggerSkill{
 	name = "texun",
@@ -332,9 +332,9 @@ moushi2:addSkill(mouce)
 moushi2:addSkill(mouceTrigger)
 moushi2:addSkill(mouceTrigger1)
 moushi2:addSkill(mouceClear)
-extension:insertRelatedSkills("mouce","#mouceTrigger")
-extension:insertRelatedSkills("mouce","#mouceTrigger1")
-extension:insertRelatedSkills("mouce","#mouceClear")
+extension_shop:insertRelatedSkills("mouce","#mouceTrigger")
+extension_shop:insertRelatedSkills("mouce","#mouceTrigger1")
+extension_shop:insertRelatedSkills("mouce","#mouceClear")
 jingbing = sgs.CreateTriggerSkill{
 	name = "jingbing",
 	events = {sgs.DamageCaused,sgs.EventPhaseStart},
@@ -507,8 +507,8 @@ yongmengshibing1:addSkill(yongmengTrigger)
 yongmengshibing2:addSkill(yongmengTrigger)
 yongmengshibing1:addSkill(yongmengClear)
 yongmengshibing2:addSkill(yongmengClear)
-extension:insertRelatedSkills("yongmeng","#yongmengTrigger")
-extension:insertRelatedSkills("yongmeng","#yongmengClear")
+extension_shop:insertRelatedSkills("yongmeng","#yongmengTrigger")
+extension_shop:insertRelatedSkills("yongmeng","#yongmengClear")
 
 shopCard = sgs.CreateSkillCard{
 	name = "shopCard",
@@ -540,7 +540,7 @@ shopCard = sgs.CreateSkillCard{
 		end
 		room:setEmotion(source, "shop")
 		local product_choice = room:askForChoice(source, "shop",productstr)
-		sendMsg(room,"choice:"..product_choice)
+		--sendMsg(room,"choice:"..product_choice)
 		if product_choice == "peachUse" then
 			if source:getMark("@coin") < 5 then sendMsg(room,"铜钱不够") room:broadcastSkillInvoke("shop",3) return false end
 			if not source:isWounded() then sendMsg(room,"未受到伤害，不能使用桃") room:broadcastSkillInvoke("shop",3) return false end
@@ -1235,7 +1235,7 @@ shopTrigger = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.Death then
 			local death = data:toDeath()
-			if death.who:objectName() ~= player:objectName() and death.damage.from and death.damage.from:objectName() == player:objectName() then
+			if death.who:objectName() ~= player:objectName() and death.damage and death.damage.from and death.damage.from:objectName() == player:objectName() then
 				player:gainMark("@coin",death.who:getMark("@coin")/2)
 				room:broadcastSkillInvoke("shop",1)
 				room:setEmotion(player, "coin")
@@ -1309,7 +1309,7 @@ shopTrigger = sgs.CreateTriggerSkill{
 }
 xx:addSkill(shop)
 xx:addSkill(shopTrigger)
-extension:insertRelatedSkills("shop","#shopTrigger")
+extension_shop:insertRelatedSkills("shop","#shopTrigger")
 sgs.LoadTranslationTable{
 	["shopping"] = "商店模式",
 	["shopCard"] = "商店",
@@ -1398,4 +1398,4 @@ sgs.LoadTranslationTable{
 	
 	["@jingbing"] = "请将一张手牌交给对方。",
 }
-return {extension}
+return {extension_shop}

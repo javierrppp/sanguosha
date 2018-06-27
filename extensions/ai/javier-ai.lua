@@ -4480,3 +4480,81 @@ sgs.ai_skill_invoke.wenji = function(self, data)
 	end
     return true
 end
+sgs.ai_skill_cardask["@wenji-card"] = function(self, data, pattern, target, target2)
+    local room = self.player:getRoom()
+	self:log("0.0")
+	local to = self.player:getTag("wenjiAskTag"):toPlayer()
+	local need_jink = false
+	local need_peach = false
+	local need_equip = false
+	local need_card = true
+	local need_trick = false
+	if self:isWeak(to) then
+		if to:getHandcardNum() <= 2 then 
+			need_jink = true
+			need_peach = true
+		end
+	end
+	if to:hasShownSkill("jizhi") or to:hasShownSkill("yingyuan") then
+		need_trick = true
+	end
+	if self.player:getEquips():length() > 1 and to:getEquips():length() <= 1 then
+		need_equip = true
+	end
+	if self:isWeak(self.player) and self.player:getHandcardNum() <= 2 then 
+		need_card = false
+	end
+	if self.player:getNextAlive():objectName() == to:objectName() then
+		need_equip = true
+		need_trick = true
+		need_card = true
+	end
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards, true)
+	if need_peach then
+		for _,card in pairs(cards) do
+			if card:isKindOf("Peach") then
+				return card:toString()
+			end
+		end
+	end
+	if need_jink then
+		for _,card in pairs(cards) do
+			if card:isKindOf("Jink") then
+				return card:toString()
+			end
+		end
+	end
+	if need_equip then
+		for _,card in pairs(cards) do
+			if card:isNDTrick() then
+				return card:toString()
+			end
+		end
+	end
+	if need_equip then
+		for _,card in pairs(cards) do
+			for i = 0, 4, 1 do 
+				if not to:getEquip(i) then
+					if (i == 0 and card:isKindOf("Weapon")) or (i == 1 and card:isKindOf("Armor"))
+							or (i == 2 and card:isKindOf("DefensiveHorse")) or (i == 3 and card:isKindOf("OffensiveHorse"))
+							or (i == 4 and card:isKindOf("Treasure")) then
+						return card:toString()
+					end
+				end
+			end
+		end
+	end
+	if need_card then
+		for _,card in pairs(cards) do
+			if not card:isKindOf("Jink") then
+				return card:toString()
+			end
+		end
+		for _,card in pairs(cards) do
+			return card:toString()
+		end
+	end
+	return "."
+end
