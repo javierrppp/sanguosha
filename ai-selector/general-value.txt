@@ -117,3 +117,11 @@ caojie								6
 xuezong								6
 masu								5
 simalang								7
+liuqi_qun								5
+liuqi_shu								6
+tangzi_wei							6
+tangzi_wu								8
+sufei_wu								7
+sufei_qun								6
+huangquan_shu							8
+huangquan_wei							8

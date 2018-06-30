@@ -1,98 +1,11 @@
 extension = sgs.Package("shouhushen", sgs.Package_GeneralPack)
 
-yy = sgs.General(extension, "yy", "wei","30",false,true,true) 
 local sendMsg = function(room,message)
 	local msg = sgs.LogMessage()
 	msg.type = "#message"
 	msg.arg = message
 	room:sendLog(msg)
 end
-rule = sgs.CreateTriggerSkill{ 
-	name = "rule" ,
-	global = true,
-	priority = 0,  --先进行君主替换
-	events = {sgs.GameStart, sgs.GeneralShown, sgs.BuryVictim} ,
-	can_trigger = function(self, event, room, player, data)
-		if event == sgs.GameStart then
-			for _,player in sgs.qlist(room:getAllPlayers(true)) do
-				room:acquireSkill(player,"shijiu")
-			end
-		elseif event == sgs.GeneralShown then
-			if not player or player:isDead() then return "" end
-			if player:getRole() == "careerist" or player:getMark("@shouhu") > 0 then return "" end
-			local head = true 
-			if not player:hasShownGeneral1() then
-				head = false
-			end
-			if player:isLord() and player:hasShownGeneral1() then
-				for _, p in sgs.qlist(room:getAllPlayers(true)) do 
-					if p:objectName() ~= player:objectName() and p:getMark("@shouhu") > 0 and p:getKingdom() == player:getKingdom() then
-						local lose_skill_str = p:getTag("shouhuSkillTag"):toString()
-						if lose_skill_str and p:hasSkill(lose_skill_str) then
-							room:detachSkillFromPlayer(p,lose_skill_str)
-						end
-						room:detachSkillFromPlayer(p,"shouhu")
-						p:loseMark("@shouhu")
-					end
-				end
-				player:gainMark("@shouhu")
-				room:acquireSkill(player, "shouhu", true, head)
-			else
-				local invoke = true
-				for _, p in sgs.qlist(room:getAllPlayers(true)) do 
-					if p:objectName() ~= player:objectName() and p:hasShownOneGeneral() and p:getKingdom() == player:getKingdom() then
-						invoke = false
-						break
-					end
-				end
-				if invoke then
-					player:gainMark("@shouhu")
-					room:acquireSkill(player, "shouhu", true, head)
-				end
-			end
-		elseif event == sgs.BuryVictim then
-			if not player then return "" end
-			local death = data:toDeath()
-			if death.who:getMark("@shouhu") > 0 then
-				local player_list = sgs.SPlayerList()
-				for _, p in sgs.qlist(room:getAlivePlayers()) do 
-					if not p:hasShownOneGeneral() then
-						local choice = room:askForChoice(p, "rule", "zhujiang+fujiang")
-						if choice == "zhujiang" then
-							p:showGeneral(true)
-						else
-							p:showGeneral(false)
-						end
-					end
-				end
-				if death.who:getRole() == "careerist" then return "" end
-				for _, p in sgs.qlist(room:getAlivePlayers()) do 
-					if p:getKingdom() == death.who:getKingdom() and p:getRole() ~= "careerist" then
-						player_list:append(p)
-					end
-				end
-				if player_list:length() == 0 then return "" end
-				for _, p in sgs.qlist(player_list) do
-					room:setPlayerProperty(p, "role", sgs.QVariant("careerist"))
-					room:setEmotion(p, "yele")
-				end
-				room:getThread():delay(2500)
-				for _, p in sgs.qlist(player_list) do
-					room:askForDiscard(p, "role", 100, 100, false, true)
-				end
-				for _, p in sgs.qlist(player_list) do
-					local recover = sgs.RecoverStruct()
-					recover.who = p
-					room:recover(p, recover)
-				end
-				for _, p in sgs.qlist(player_list) do
-					p:drawCards(3)
-				end
-			end
-		end
-		return ""
-	end
-}
 shijiu = sgs.CreateTriggerSkill{  
 	name = "shijiu" ,
 	limit_mark = "@shijiuMark",
@@ -190,9 +103,8 @@ local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("shijiu") then skills:append(shijiu) end
 if not sgs.Sanguosha:getSkill("shouhu") then skills:append(shouhu) end
 sgs.Sanguosha:addSkills(skills)
-yy:addSkill(rule)
 sgs.LoadTranslationTable{
-	["shouhushen"] = "守护神模式",
+	["shouhushen"] = "守护包",
 	["shijiu"] = "施救",
 	[":shijiu"] = "限定技，当你的守护者濒死时，若你已经亮出武将牌，你可以失去一点体力，然后令守护者的体力值回复至一点。",
 	["shouhu"] = "守护",

@@ -4558,3 +4558,329 @@ sgs.ai_skill_cardask["@wenji-card"] = function(self, data, pattern, target, targ
 	end
 	return "."
 end
+
+-----苏飞-----
+
+sgs.ai_skill_invoke.lianpian = function(self, data)
+	return true
+end
+
+-----黄权-----
+
+sgs.ai_skill_playerchosen["dianhu"] = function(self, targets) 
+    local source = self.player
+	local room = source:getRoom()
+	for _, p in sgs.qlist(targets) do 
+		if p:hasShownOneGeneral() and (p:getKingdom() ~= source:getKingdom() or p:getRole() == "careerist") then
+			return p
+		end
+	end
+	for _, p in sgs.qlist(targets) do 
+		if self:isEnemy(p) then
+			return p
+		end
+	end
+	return targets:first()
+end
+sgs.ai_use_value.jianjiCard = 5
+sgs.ai_use_priority.jianjiCard = 5
+jianji_skill = {}
+jianji_skill.name = "jianji"
+table.insert(sgs.ai_skills, jianji_skill)
+jianji_skill.getTurnUseCard = function(self,inclusive)
+	if not self.player:hasUsed("#jianjiCard") then
+		return sgs.Card_Parse("#jianjiCard:.:&jianji")
+	end
+end
+sgs.ai_skill_invoke.jianji = function(self, data)
+	local data_str = data:toString()
+	local value = data_str:split(":")
+	local id = value[2]
+	if (sgs.Sanguosha:getCard(id):isKindOf("Weapon") and not self.player:getWeapon()) or
+	   (sgs.Sanguosha:getCard(id):isKindOf("Armor") and not self.player:getArmor()) or
+	   (sgs.Sanguosha:getCard(id):isKindOf("DefensiveHorse") and not self.player:getDefensiveHorse()) or
+	   (sgs.Sanguosha:getCard(id):isKindOf("OffensiveHorse") and not self.player:getOffensiveHorse()) or
+	   (sgs.Sanguosha:getCard(id):isKindOf("Treasure") and not self.player:getTreasure()) then
+	    return true
+	end
+    return false
+end
+sgs.ai_skill_use_func["#jianjiCard"] = function(card, use, self)
+	local room = self.room
+	local source = self.player
+	local use_or_not = false
+	for _, p in sgs.qlist(room:getOtherPlayers(player)) do 
+		if p:hasShownOneGeneral() and (p:getKingdom() ~= source:getKingdom() or p:getRole() == "careerist") then
+			use_or_not = true
+			break
+		end
+	end
+	if not use_or_not and not source:hasShownSkill("dianhu") then return false end
+	local friends_hands = 999
+	local target_friend
+	for _, p in pairs(self.friends) do
+		local x = p:getHandcardNum()
+		if x < friends_hands then
+			friends_hands = x
+			target_friend = p
+		end
+	end
+	local targets = sgs.SPlayerList()
+	targets:append(target_friend)
+	if targets:length() == 1 then
+		use.card = card
+		if use.to then use.to = targets end
+	end
+end
+sgs.ai_skill_use["@@jianji"]=function(self,prompt)
+    self:updatePlayers()
+	local card = prompt:split(":")
+	if card[2] == "slash" or card[2] == "fire_slash" or card[2] == "thunder_slash" then
+	    self:sort(self.enemies, "defense")
+		local targets = {}
+		for _,enemy in ipairs(self.enemies) do
+		    if (not self:slashProhibit(sgs.Sanguosha:getCard(card[5]), enemy)) and self.player:canSlash(enemy, sgs.Sanguosha:getCard(card[5])) then
+				if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+				table.insert(targets,enemy:objectName())
+			end
+		end
+		if #targets > 0 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	if card[2] == "peach" or card[2] == "threaten_emperor" or card[2] == "await_exhausted" or card[2] == "ex_nihilo" or card[2] == "amazing_grace" then
+		return ("%s:jianji[%s:%s]=%d&jianji"):format(card[2], suit, number, card[5])
+	end
+	if card[2] == "savage_assault" or card[2] == "archery_attack"  then
+		local is_weak = false
+		for _, p in sgs.qlist(self.room:getAlivePlayers()) do 
+			if self:isFriend(p) then 
+				if p:getHp() == 1 and self:getCardsNum("Peach") == 0 then 
+					is_weak = true
+				end
+			end
+		end
+		if not is_weak then
+			return ("%s:jianji[%s:%s]=%d&jianji"):format(card[2], suit, number, card[5])
+		end
+	end
+	if card[2] == "god_salvation" then
+		local need_recover = false
+		local friend_wounded = 0
+		local enemy_wounded = 0
+		for _, p in sgs.qlist(self.room:getAlivePlayers()) do 
+			if self:isFriend(p) then friend_wounded = friend_wounded + 1
+			elseif self:isEnemy(p) and p:hasShownOneGeneral() then enemy_wounded = enemy_wounded + 1
+			end
+		end
+		local base = 1 
+		if self.player:getKingdom() == "wei" and self.player:getRole() ~= "careerist" then base = 2 end
+		if friend_wounded >= enemy_wounded - 1 then
+			need_recover = true
+		end
+		if need_recover then
+			return ("%s:jianji[%s:%s]=%d&jianji"):format(card[2], suit, number, card[5])
+		end
+	end
+	if card[2] == "iron_chain" then
+	    local situation_is_friend = false
+	    for _, friend in ipairs(self.friends) do
+		    if friend:isChained() and (not friend:isProhibited(friend, sgs.Sanguosha:getCard(card[5]))) then
+			    situation_is_friend = true
+		    end
+		end
+		if situation_is_friend then
+		    local targets = {}
+			for _, friend in ipairs(self.friends) do
+			    if friend:isChained() and (not friend:isProhibited(friend, sgs.Sanguosha:getCard(card[5]))) then
+			        if #targets >= 2 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+					table.insert(targets,friend:objectName())
+		        end
+			end
+			if #targets > 0 then
+				return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			else
+			    return "."
+			end
+		else
+		    local chained_enemy = 0
+			local targets = {}
+			for _, enemy in ipairs(self.enemies) do
+			    if enemy:isChained() then
+				    chained_enemy = chained_enemy + 1
+				end
+				if (not enemy:isChained()) and (not enemy:isProhibited(enemy, sgs.Sanguosha:getCard(card[5]))) then
+					if #targets >= 2 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+					table.insert(targets,enemy:objectName())
+				end
+			end
+			if (#targets + chained_enemy) > 1 then
+				return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			else
+			    return "."
+			end
+	    end
+	end
+	if card[2] == "burning_camps" then
+		if self:isEnemy(self.player:getNextAlive()) then
+			return ("%s:jianji[%s:%s]=%d&jianji"):format(card[2], suit, number, card[5])
+		end
+	end
+	if card[2] == "befriend_attacking" then
+	    self:sort(self.friends, "hp")
+	    self:sort(self.enemies, "hp")
+		local targets = {}
+		for _, friend in ipairs(self.friends_noself) do
+		    if (friend:getKingdom() ~= self.player:getKingdom()) and (not friend:isProhibited(friend, sgs.Sanguosha:getCard(card[5]))) then
+			    if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+				table.insert(targets,friend:objectName())
+			end
+		end
+		if #targets == 0 then
+			for _, enemy in ipairs(self.enemies) do
+				if (not enemy:isKongcheng()) and (not enemy:isProhibited(enemy, sgs.Sanguosha:getCard(card[5]))) then
+					if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+					table.insert(targets,enemy:objectName())
+				end
+			end
+		end
+		if #targets > 0 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	if card[2] == "fire_attack" then
+	    self:sort(self.enemies, "hp")
+		local targets = {}
+		for _, enemy in ipairs(self.enemies) do
+		    if (not enemy:isKongcheng()) and (not enemy:isProhibited(enemy, sgs.Sanguosha:getCard(card[5]))) then
+			    if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+				table.insert(targets,enemy:objectName())
+			end
+		end
+		if #targets > 0 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	if card[2] == "dismantlement" then
+	    self:sort(self.enemies, "handcard")
+		local targets = {}
+		for _, enemy in ipairs(self.enemies) do
+		    if (not enemy:isAllNude()) and (not enemy:isProhibited(enemy, sgs.Sanguosha:getCard(card[5]))) then
+			    if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+				table.insert(targets,enemy:objectName())
+			end
+		end
+		if #targets > 0 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	if card[2] == "drowning" then
+	    self:sort(self.enemies, "handcard")
+		local targets = {}
+		for _, enemy in ipairs(self.enemies) do
+		    if enemy:getEquips():length() > 0 then
+			    if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+				table.insert(targets,enemy:objectName())
+			end
+		end
+		if #targets > 0 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	if card[2] == "snatch" then
+	    self:sort(self.enemies, "handcard")
+		local targets = {}
+		for _, enemy in ipairs(self.enemies) do
+		    if (not enemy:isAllNude()) and (not enemy:isProhibited(enemy, sgs.Sanguosha:getCard(card[5]))) and
+			self.player:distanceTo(enemy) <= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_DistanceLimit, self.player, sgs.Sanguosha:getCard(card[5])) then
+			    if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+				table.insert(targets,enemy:objectName())
+			end
+		end
+		if #targets > 0 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	if card[2] == "collateral" then
+	    self:sort(self.enemies, "handcard")
+		local targets = {}
+		for _, enemy in ipairs(self.enemies) do
+		    if enemy:getWeapon() and (not enemy:isProhibited(enemy, sgs.Sanguosha:getCard(card[5]))) then
+			    for _, tos in ipairs(self.enemies) do
+				    if enemy:objectName() ~= tos:objectName() and
+					enemy:canSlash(tos, sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)) and
+					(not tos:isProhibited(tos, sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0))) then
+				        table.insert(targets,enemy:objectName())
+						table.insert(targets,tos:objectName())
+						break
+					end
+				end
+			end
+		end
+		if #targets > 1 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	if card[2] == "duel" then
+	    self:sort(self.enemies, "handcard")
+		local targets = {}
+		for _, enemy in ipairs(self.enemies) do
+		    if (not enemy:isProhibited(enemy, sgs.Sanguosha:getCard(card[5]))) then
+			    if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, sgs.Sanguosha:getCard(card[5])) then break end
+				table.insert(targets,enemy:objectName())
+			end
+		end
+		if #targets > 0 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	if card[2] == "supply_shortage" then
+	    self:sort(self.enemies, "handcard")
+		local targets = {}
+		for _, enemy in ipairs(self.enemies) do
+		    if (not enemy:containsTrick("supply_shortage")) and
+			(not enemy:isProhibited(enemy, sgs.Sanguosha:getCard(card[5]))) and
+			self.player:distanceTo(enemy) <= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_DistanceLimit, self.player, sgs.Sanguosha:getCard(card[5])) then
+			    table.insert(targets,enemy:objectName())
+				break
+			end
+		end
+		if #targets > 0 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	if card[2] == "indulgence" then
+	    self:sort(self.enemies, "hp")
+		local targets = {}
+		for _, enemy in ipairs(self.enemies) do
+		    if (not enemy:containsTrick("indulgence")) and (not enemy:isProhibited(enemy, sgs.Sanguosha:getCard(card[5]))) then
+			    table.insert(targets,enemy:objectName())
+				break
+			end
+		end
+		if #targets > 0 then
+			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+		else
+		    return "."
+		end
+	end
+	return "."
+end

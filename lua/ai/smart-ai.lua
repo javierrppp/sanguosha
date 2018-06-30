@@ -4704,6 +4704,7 @@ function SmartAI:hasTrickEffective(card, to, from)
 			return false
 		end
 	end
+	if to:hasShownSkill("zhichi") and to:getMark("@late") > 0 then return false end
 	if to:hasShownSkill("kongcheng") and to:isKongcheng() and card:isKindOf("Duel") then return false end
 	if to:hasShownSkill("wuyan") and (card:isKindOf("FireAttack") or card:isKindOf("ArcheryAttack") or card:isKindOf("BurningCamps") or card:isKindOf("Duel") or card:isKindOf("Drowning") or card:isKindOf("SavageAssault")) then return false end
 	if from:hasShownSkill("wuyan") and (card:isKindOf("FireAttack") or card:isKindOf("ArcheryAttack") or card:isKindOf("BurningCamps") or card:isKindOf("Duel") or card:isKindOf("Drowning") or card:isKindOf("SavageAssault")) then return false end
