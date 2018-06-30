@@ -1,4 +1,4 @@
-local hash, multy_kingdom = init()
+local hash, multy_kingdom = init(extra_general_init(), {})
 shouhu_mode = {
 	name = "shouhu_mode",
 	expose_role = false,

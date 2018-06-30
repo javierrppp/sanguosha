@@ -1,4 +1,4 @@
-local hash, multy_kingdom = initByKingdom()
+local hash, multy_kingdom = initByKingdom(extra_general_init(), {"zhonghui"})
 
 XmodeRule = sgs.CreateTriggerSkill{
 	name = "XmodeRule",

@@ -24,7 +24,7 @@ local addProduct = function(player,product)
 	player:setTag("products1",sgs.QVariant(table.concat(products,"+")))
 end
 
-local hash, multy_kingdom = init()
+local hash, multy_kingdom = init(extra_general_init(), {})
 
 
 shop_rule = sgs.CreateTriggerSkill{

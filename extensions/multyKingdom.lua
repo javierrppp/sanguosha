@@ -1,13 +1,13 @@
 extension_multy = sgs.Package("extension_multy", sgs.Package_GeneralPack)
 
-liuqi_qun = sgs.General(extension_multy, "liuqi_qun", "qun", 3)
-liuqi_shu = sgs.General(extension_multy, "liuqi_shu", "shu", 3)
-huangquan_shu = sgs.General(extension_multy, "huangquan_shu", "shu", 3)
-huangquan_wei = sgs.General(extension_multy, "huangquan_wei", "wei", 3)
-sufei_qun = sgs.General(extension_multy, "sufei_qun", "qun", 4)
-sufei_wu = sgs.General(extension_multy, "sufei_wu", "wu", 4)
-tangzi_wei = sgs.General(extension_multy, "tangzi_wei", "wei", 4)
-tangzi_wu = sgs.General(extension_multy, "tangzi_wu", "wu", 4)
+liuqi_qun = sgs.General(extension_multy, "liuqi_qun", "qun", 3, true, true, false)
+liuqi_shu = sgs.General(extension_multy, "liuqi_shu", "shu", 3, true, true, false)
+huangquan_shu = sgs.General(extension_multy, "huangquan_shu", "shu", 3, true, true, false)
+huangquan_wei = sgs.General(extension_multy, "huangquan_wei", "wei", 3, true, true, false)
+sufei_qun = sgs.General(extension_multy, "sufei_qun", "qun", 4, true, true, false)
+sufei_wu = sgs.General(extension_multy, "sufei_wu", "wu", 4, true, true, false)
+tangzi_wei = sgs.General(extension_multy, "tangzi_wei", "wei", 4, true, true, false)
+tangzi_wu = sgs.General(extension_multy, "tangzi_wu", "wu", 4, true, true, false)
 
 -----刘琦-----
 
@@ -390,6 +390,7 @@ dianhu = sgs.CreateTriggerSkill{
 			local mhp = sgs.QVariant()
 			mhp:setValue(count + 1)
 			room:setPlayerProperty(player, "maxhp", mhp)
+			room:detachSkillFromPlayer(player,self:objectName())
 		elseif event == sgs.GeneralShown or event == sgs.EventPhaseStart then
 			local to = player:getTag("dianhuTarget"):toPlayer()
 			player:removeTag("dianhuTarget")
@@ -598,7 +599,7 @@ sgs.LoadTranslationTable{
 	["~huangquan_shu"] = "魏王厚待与我，降魏又有何错？",
 	["~huangquan_wei"] = "魏王厚待与我，降魏又有何错？",
 	["dianhu"] = "点虎",
-	[":dianhu"] = "锁定技，你亮出该武将牌时，或者你的回合开始时且场上没有带“虎”标记的角色且你已亮出此武将牌时，你指定一名其他角色，其获得“虎”标记。当你对有“虎”标记的角色造成1点伤害后，若你于此回合以此法摸牌的数量少于场上存活势力数，你摸一张牌；当你杀死带有“虎”标记的角色后，你增加一点体力上限,然后失去此技能。",
+	[":dianhu"] = "锁定技，你亮出该武将牌时，或者你的回合开始且场上没有带“虎”标记的角色且你已亮出此武将牌时，你指定一名其他角色，其获得“虎”标记。当你对有“虎”标记的角色造成1点伤害后，若你于此回合以此法摸牌的数量少于场上存活势力数，你摸一张牌；当你杀死带有“虎”标记的角色后，你增加一点体力上限,然后失去此技能。",
 	["$dianhu1"] = "预则立，不预则废",
 	["$dianhu2"] = "就用你，给我军祭旗",
 	["jianji"] = "谏计",

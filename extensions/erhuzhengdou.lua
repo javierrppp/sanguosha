@@ -1,12 +1,5 @@
-local hash, multy_kingdom = initByKingdom()
+local hash, multy_kingdom = initByKingdom(extra_general_init(), {"zhonghui"})
 
-erhu_rule = sgs.CreateTriggerSkill{
-	name = "erhu_rule",
-	events = {sgs.BuryVictim},
-	on_effect = function(self, event, room, player, data,ask_who)
-	end,
-	priority = 1,
-}
 erhu_mode = {
 	name = "erhu_mode",
 	expose_role = false,
