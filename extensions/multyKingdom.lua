@@ -8,6 +8,7 @@ sufei_qun = sgs.General(extension_multy, "sufei_qun", "qun", 4, true, true, fals
 sufei_wu = sgs.General(extension_multy, "sufei_wu", "wu", 4, true, true, false)
 tangzi_wei = sgs.General(extension_multy, "tangzi_wei", "wei", 4, true, true, false)
 tangzi_wu = sgs.General(extension_multy, "tangzi_wu", "wu", 4, true, true, false)
+machao_qun = sgs.General(extension_multy, "machao_qun", "qun", 4, true, true, false)
 
 -----刘琦-----
 
@@ -571,6 +572,66 @@ sgs.Sanguosha:addSkills(skillList)
 tangzi_wei:addSkill(xingzhao)
 tangzi_wu:addSkill(xingzhao)
 
+-----马超-----
+
+shichou = sgs.CreateTriggerSkill{
+	name = "shichou",
+	can_preshow = true,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.CardUsed},
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return "" end
+		local use = data:toCardUse()
+		if not use.card:isKindOf("Slash") then return "" end
+		if use.from:hasSkill(self:objectName()) and player:objectName() == use.from:objectName() then
+			if player:isWounded() then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		local targets = sgs.SPlayerList()
+		local use = data:toCardUse()
+		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do 
+			if not use.to:contains(p) then
+				if not player:isProhibited(p, card) and player:inMyAttackRange(p) then
+					targets:append(p)
+				end
+			end
+		end
+		local lost_hp = player:getMaxHp() - player:getHp()
+		local target_choose = room:askForPlayersChosen(player,targets,self:objectName(),0,lost_hp,self:objectName().."-invoke:::"..lost_hp,true)
+		if target_choose:length() > 0 then
+			room:broadcastSkillInvoke(self:objectName())
+			local targets_list = {}
+			for _, p in sgs.qlist(target_choose) do
+				table.insert(targets_list, p:objectName())
+			end
+			player:setTag("shichouTag", sgs.QVariant(table.concat(targets_list, "+")))
+			return true
+		end
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		local targets_list = player:getTag("shichouTag"):toString():split("+")
+		player:setTag("shichouTag", sgs.QVariant(""))
+		local use = data:toCardUse()
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do 
+			if table.contains(targets_list, p:objectName()) then
+				use.to:append(p)
+			end
+		end
+		data:setValue(use)
+	end
+}
+		
+		
+machao_qun:addSkill(shichou)
+machao_qun:addSkill("mashu_machao")
+machao_qun:addCompanion("mateng")
+
 sgs.LoadTranslationTable{
 	["extension_multy"] = "多势力武将包",
 	["liuqi_shu"] = "刘琦",
@@ -591,6 +652,7 @@ sgs.LoadTranslationTable{
 	["$tunjiang2"] = "皇叔勿惊，吾与关将军已到。",
 	["$benzhi1"] = "江夏冲要之地，孩儿愿往守之。",
 	["$benzhi2"] = "皇叔勿惊，吾与关将军已到。",
+	["#wenji_ask_card"] = "问计",
 	
 	["huangquan_shu"] = "黄权",
 	["huangquan_wei"] = "黄权",
@@ -636,5 +698,13 @@ sgs.LoadTranslationTable{
 	["$xunxun_tangzi2"] = "让我先探他一探。",
 	["xunxun_tangzi"] = "恂恂",
 	
+	["machao_qun"] = "马超",
+	["#machao_qun"] = "威震西凉",
+	["~machao_qun"] = "西凉，回不去啦。",
+	["shichou"] = "誓仇",
+	[":shichou"] = "你使用【杀】可以多选择至多X名角色为目标（X为你已经损失的体力值）。",
+	["$shichou1"] = "灭族之恨，不共戴天！",
+	["$shichou2"] = "休想跑！",
+	["shichou-invoke"] = "你可以额外选择%arg名角色",
 }
 return {extension_multy}

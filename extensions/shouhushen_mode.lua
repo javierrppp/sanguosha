@@ -30,7 +30,7 @@ shouhu_mode = {
 			generals[i] = player:getGeneralName() --获取武将，这个是chooseGenerals分配的。
 			generals2[i] = player:getGeneral2Name() --同上
 			kingdoms[i] = general:getKingdom()
-			--kingdoms[i] = general:getKingdom()
+			room:setTag("shouhushen_hash",sgs.QVariant(table.concat(hash,"+")))
 		end
 		return generals, generals2,kingdoms
 	end,

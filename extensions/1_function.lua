@@ -21,7 +21,8 @@ end
 function extra_general_init()
 	local extra_list = {}
 	for _,general in pairs(sgs.Sanguosha:getGeneralNames()) do
-		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun") then
+		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun")
+			or general == "machao" then
 			table.insert(extra_list, general)
 		end
 	end
@@ -65,6 +66,7 @@ function init(extra_list, ban_list)
 	local multy_kingdom = {}
 	for _,general in pairs(sgs.Sanguosha:getLimitedGeneralNames())do
 		if general:startsWith("lord_") then continue end
+		if table.contains(extra_list, general) then continue end
 		if table.contains(ban_list, general) then continue end
 		if not table.contains(hash, general) then
 			table.insert(hash,general)
@@ -84,6 +86,14 @@ function init(extra_list, ban_list)
 				local name = {}
 				table.insert(name, general)
 				multy_kingdom[generalRealName] = name
+			end
+		elseif general == "machao" then
+			if multy_kingdom[general] then
+				table.insert(multy_kingdom[general],general)
+			else
+				local name = {}
+				table.insert(name, general)
+				multy_kingdom[general] = name
 			end
 		else
 			if not table.contains(hash, general) then
@@ -115,6 +125,7 @@ function initByKingdom(extra_list, ban_list)
 	local multy_kingdom = {}
 	for _,general in pairs(sgs.Sanguosha:getLimitedGeneralNames()) do
 		if general:startsWith("lord_") then continue end
+		if table.contains(extra_list, general) then continue end
 		if table.contains(ban_list, general) then continue end
 		if hash[sgs.Sanguosha:getGeneral(general):getKingdom()] then
 			if not table.contains(hash[sgs.Sanguosha:getGeneral(general):getKingdom()], general) then
@@ -136,6 +147,14 @@ function initByKingdom(extra_list, ban_list)
 				local name = {}
 				table.insert(name, general)
 				multy_kingdom[generalRealName] = name
+			end
+		elseif general == "machao" then
+			if multy_kingdom[general] then
+				table.insert(multy_kingdom[general],general)
+			else
+				local name = {}
+				table.insert(name, general)
+				multy_kingdom[general] = name
 			end
 		else
 			if hash[sgs.Sanguosha:getGeneral(general):getKingdom()] then

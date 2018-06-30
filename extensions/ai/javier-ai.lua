@@ -12,6 +12,10 @@ function speak(to, type)
 	end
 end
 
+sgs.ai_skill_invoke.zhenhan = function(self, data)
+    return true
+end
+
 --**********智包**********-----
 
 -----曹操·君-----
@@ -2494,6 +2498,7 @@ sgs.ai_skill_use_func["#shefuCard"] = function(card, use, self)
 		if p:hasShownSkill("shuangxiong") and self:isEnemy(p) then shuangtou = p end
 		if p:hasShownSkill("luanji") and self:isEnemy(p) then yuanshao = p end
 		if p:hasShownSkill("duoshi") and self:isEnemy(p) then luxun = p end
+		if p:hasShownSkill("Eduoshi") and self:isEnemy(p) then luxun = p end
 		if p:getEquip(4) and p:getEquip(4):isKindOf("JadeSeal") and self:isEnemy(p) then yuxi = p end
 	end
 	for _, card in ipairs(cards) do
@@ -4378,6 +4383,112 @@ sgs.ai_skill_playerchosen.yanyu = function(self, targets)
 	return weak_friend
 end
 
+-----陆逊-----
+
+local Eduoshi_skill = {}
+Eduoshi_skill.name = "Eduoshi"
+table.insert(sgs.ai_skills, Eduoshi_skill)
+Eduoshi_skill.getTurnUseCard = function(self, inclusive)
+	local DuoTime = 3
+	if self.player:hasSkills("fenming|zhiheng|fenxun|keji") then
+		DuoTime = 3
+	end
+	if self.player:hasSkills("hongyan|yingzi_zhouyu|yingzi_sunce") then
+		DuoTime = 3
+	end
+	if self.player:hasSkills("xiaoji|haoshi") then
+		DuoTime = 4
+	end
+	for _, player in ipairs(self.friends) do
+		if player:hasShownSkills("xiaoji|haoshi") then
+			DuoTime = 4
+			break
+		end
+	end
+
+	if self.player:getMark("@duoshiMark") >= DuoTime and self:getOverflow() <= 0 then return end
+
+	if sgs.turncount <= 1 and #self.friends_noself == 0 and not self:isWeak() and self:getOverflow() <= 0 then return end
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+
+	if (self:hasCrossbowEffect() or self:getCardsNum("Crossbow") > 0) and self:getCardsNum("Slash") > 0 then
+		self:sort(self.enemies, "defense")
+		for _, enemy in ipairs(self.enemies) do
+			local inAttackRange = self.player:distanceTo(enemy) == 1 or self.player:distanceTo(enemy) == 2
+									and self:getCardsNum("OffensiveHorse") > 0 and not self.player:getOffensiveHorse()
+			if inAttackRange  and sgs.isGoodTarget(enemy, self.enemies, self) then
+				local slashes = self:getCards("Slash")
+				local slash_count = 0
+				for _, slash in ipairs(slashes) do
+					if not self:slashProhibit(slash, enemy) and self:slashIsEffective(slash, enemy) then
+						slash_count = slash_count + 1
+					end
+				end
+				if slash_count >= enemy:getHp() then return end
+			end
+		end
+	end
+
+	local need_card
+	if self.player:getHandcardNum() <= 2 then return end
+	self:sortByUseValue(cards, true)
+	local suit_used = self.player:property("duoshiProp"):toString():split("+")
+	for _, card in ipairs(cards) do
+	
+		if not table.contains(suit_used, card:getSuitString()) then
+			local shouldUse = true
+			if card:isKindOf("Slash") then
+				local dummy_use = { isDummy = true }
+				if self:getCardsNum("Slash") == 1 then
+					self:useBasicCard(card, dummy_use)
+					if dummy_use.card then shouldUse = false end
+				end
+			end
+
+			if self:getUseValue(card) > sgs.ai_use_value.AwaitExhausted and card:isKindOf("TrickCard") then
+				local dummy_use = { isDummy = true }
+				self:useTrickCard(card, dummy_use)
+				if dummy_use.card then shouldUse = false end
+			end
+
+			local sunshangxiang = false
+			if self.player:hasSkills("xiaoji") and self.player:getCards("e"):length() > 0 then
+				sunshangxiang = true
+			end
+			for _, player in ipairs(self.friends) do
+				if player:hasShownSkill("xiaoji") and player:getCards("e"):length() > 0 then
+					sunshangxiang = true
+					break
+				end
+			end
+
+			if not self:willShowForDefence() and not sunshangxiang then
+				shouldUse = false
+			end
+
+			if shouldUse and not card:isKindOf("Peach") then
+				need_card = card
+				break
+			end
+
+		end
+	end
+
+	local EduoshiArg = DuoTime/ 1.3 - 042 * self:getOverflow() 
+	if need_card then
+		--if self:getUseValue(need_card) > self:getUseValue(sgs.Sanguosha:cloneCard("await_exhausted")) + EduoshiArg then return end
+		local card_id = need_card:getEffectiveId()
+		local card_str = string.format("await_exhausted:Eduoshi[%s:%d]=%d&Eduoshi",need_card:getSuitString(), need_card:getNumber(), need_card:getEffectiveId())
+		local await = sgs.Card_Parse(card_str)
+		assert(await)
+		return await
+	end
+end
+sgs.ai_skill_invoke.duoshi = function(self, data)
+	return true
+end
+
 -----司马朗-----
 
 sgs.ai_skill_invoke.junbing = function(self, data)
@@ -4883,4 +4994,22 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 		end
 	end
 	return "."
+end
+sgs.ai_skill_playerchosen["shichou"] = function(self, targets) 
+    self:sort(self.enemies, "defense")
+	local targets_list = {}
+	local lost_hp = self.player:getMaxHp() - self.player:getHp()
+	local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+	for _,enemy in ipairs(self.enemies) do
+		if (not self:slashProhibit(card, enemy)) and self.player:canSlash(enemy, card) and targets:contains(enemy) then
+	self:log("?")
+			table.insert(targets_list,enemy)
+		end
+		if #targets_list >= lost_hp then break end
+	end
+	self:log("!!!!!!"..#targets_list)
+	if #targets_list > 0 then
+	self:log("!!!!!!")
+		return targets_list
+	end
 end

@@ -3,7 +3,7 @@ local hash, multy_kingdom = init(extra_general_init(), {"zhonghui"})
 rule = sgs.CreateTriggerSkill{ 
 	name = "rule" ,
 	priority = 0,  --先进行君主替换
-	events = {sgs.GameStart, sgs.GeneralShown, sgs.BuryVictim} ,
+	events = {sgs.GameStart, sgs.GeneralShown, sgs.Death} ,
 	on_effect = function(self, event, room, player, data,ask_who)
 		if event == sgs.GameStart then
 			--[[for key,value in pairs(multy_kingdom) do
@@ -46,7 +46,7 @@ rule = sgs.CreateTriggerSkill{
 					room:acquireSkill(player, "shouhu", true, head)
 				end
 			end
-		elseif event == sgs.BuryVictim then
+		elseif event == sgs.Death then
 			if not player then return false end
 			local death = data:toDeath()
 			if death.who:getMark("@shouhu") > 0 then

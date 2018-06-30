@@ -49,8 +49,9 @@ lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
 
 --**********加强包**********-----
 
-caocao = sgs.General(extension1, "caocao", "wei","4",true,false,false) 
-weiyan = sgs.General(extension1, "weiyan", "shu","4",true,false,false)
+caocao = sgs.General(extension1, "caocao", "wei","4",true,false,true) 
+weiyan = sgs.General(extension1, "weiyan", "shu","4",true,false,true)
+luxun = sgs.General(extension1, "luxun", "wu","3",true,false,true)
 
 --**********猛包**********-----
 
@@ -523,7 +524,7 @@ caochong:addSkill(renxin)
 shouxi = sgs.CreateTriggerSkill{
 	name = "shouxi",
 	can_preshow = true,
-	events = {sgs.TargetConfirming, sgs.EventLoseSkill0},
+	events = {sgs.TargetConfirming, sgs.EventLoseSkill},
 	frequency = sgs.Skill_NotFrequent,
 	can_trigger = function(self, event, room, player, data)
 		if not player or player:isDead() or not player:hasSkill(self) then return "" end
@@ -1253,7 +1254,7 @@ funan = sgs.CreateTriggerSkill{
 				local ids = ask_who:getTag("funanCard"):toString():split("+")
 				ask_who:setTag("funanCard", sgs.QVariant(""))
 				if #ids == 0 or ids[1] == "" then return false end
-				room:obtainCard(ask_who, card)
+				room:obtainCard(ask_who, card) 
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				for _, c in pairs(ids) do
 					local ccc = sgs.Sanguosha:getCard(tonumber(c))
@@ -1555,7 +1556,7 @@ zishu = sgs.CreateTriggerSkill{
 	events = {sgs.BeforeCardsMove,sgs.CardUsed, sgs.EventPhaseStart, sgs.CardFinished, sgs.JinkEffect},
 	can_trigger = function(self, event, room, player, data)
 		if event == sgs.EventPhaseStart then
-			if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_End then
+			if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish then
 				local maliang = room:findPlayersBySkillName(self:objectName())
 				for _, p in sgs.qlist(maliang) do
 					p:setTag("yingyuanTag", sgs.QVariant(""))
@@ -1705,7 +1706,7 @@ yingyuan = sgs.CreateTriggerSkill{
 	events = {sgs.BeforeCardsMove,sgs.CardUsed, sgs.EventPhaseStart,sgs.CardFinished, sgs.CardResponded, sgs.CardsMoveOneTime},
 	can_trigger = function(self, event, room, player, data)
 		if event == sgs.EventPhaseStart then
-			if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_End then
+			if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish then
 				local maliang = room:findPlayersBySkillName(self:objectName())
 				for _, p in sgs.qlist(maliang) do
 					p:setTag("yingyuanTag", sgs.QVariant(""))
@@ -2776,10 +2777,8 @@ yinbing = sgs.CreateTriggerSkill{
 	can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
 		if player:getPhase() == sgs.Player_Discard then
-			for _, p in sgs.qlist(room:getAlivePlayers()) do
-				if p:isWounded() then
-					return self:objectName()
-				end
+			if player:isWounded() then
+				return self:objectName()
 			end
 		end
 		return ""
@@ -2789,10 +2788,10 @@ yinbing = sgs.CreateTriggerSkill{
 		for _, p in sgs.qlist(room:getAlivePlayers()) do
 			if not p:isNude() then
 				targets:append(p)
-			end
+			end 
 		end
 		if targets:length() == 0 then return false end
-		local target_choose = room:askForPlayersChosen(player,targets,self:objectName(),0,player:getMaxHp()-player:getHp(),self:objectName().."-invoke",true)
+		local target_choose = room:askForPlayersChosen(player,targets,self:objectName(),0,player:getMaxHp()-player:getHp(),self:objectName().."-invoke:::"..player:getMaxHp()-player:getHp(),true)
 		if target_choose:length() > 0 then
 			player:showGeneral(player:inHeadSkills("yinbing"))
 			room:broadcastSkillInvoke(self:objectName())
@@ -5647,18 +5646,13 @@ lianying = sgs.CreateTriggerSkill{
 	name = "lianying" ,
 	frequency = sgs.Skill_Frequent ,
 	relate_to_place = "deputy",
-	events = {sgs.CardsMoveOneTime,sgs.GeneralShown} ,
+	events = {sgs.CardsMoveOneTime} ,
 	can_trigger = function(self, event, room, player, data)	
 		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
 		if event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
 			if move.from and move.from:objectName() == player:objectName() and move.from_places:contains(sgs.Player_PlaceHand) and move.is_last_handcard then
 				return self:objectName()
-			end
-		elseif event == sgs.GeneralShown then
-			if data:toBool() ~= player:inHeadSkills(self:objectName()) then return "" end
-			if player:hasShownSkill("duoshi") and player:hasShownSkill(self:objectName()) then
-				room:detachSkillFromPlayer(player,"duoshi")
 			end
 		end
 		return ""
@@ -5675,6 +5669,80 @@ lianying = sgs.CreateTriggerSkill{
 		return false
 	end
 }
+Eduoshi = sgs.CreateOneCardViewAsSkill{
+	name = "Eduoshi",
+	response_or_use = true,	
+	relate_to_place = "head",
+	view_filter = function(self, card)
+		local suit_used = sgs.Self:property("duoshiProp"):toString():split("+")
+		return not table.contains(suit_used, card:getSuitString()) and not sgs.Self:isJilei(card)
+	end,
+	view_as = function(self, card)
+		local await_exhausted = sgs.Sanguosha:cloneCard("await_exhausted",card:getSuit(),card:getNumber())
+		await_exhausted:setSkillName("Eduoshi")
+		await_exhausted:addSubcard(card)
+		return await_exhausted
+	end
+}
+duoshi_trigger = sgs.CreateTriggerSkill{
+	name = "#duoshi_trigger" ,
+	frequency = sgs.Skill_Compulsory ,
+	relate_to_place = "head",
+	global = true,
+	events = {sgs.CardUsed, sgs.EventPhaseEnd} ,
+	can_trigger = function(self, event, room, player, data)	
+		if not player or player:isDead() or not player:hasSkill("Eduoshi") then return "" end
+		if event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if use.card:isKindOf("AwaitExhausted") then
+				if use.card:getSkillName() == "Eduoshi" then
+					local suit_used = player:property("duoshiProp"):toString():split("+")
+					table.insert(suit_used, use.card:getSuitString())
+					room:setPlayerProperty(player, "duoshiProp", sgs.QVariant(table.concat(suit_used, "+")))
+				end
+				player:gainMark("@duoshiMark")
+			end
+		elseif event == sgs.EventPhaseEnd then
+			if player:getPhase() == sgs.Player_Finish then
+				room:setPlayerProperty(player, "duoshiProp", sgs.QVariant(""))
+				local can_invoke = false
+				if player:getMark("@duoshiMark") >= 3 then
+					local n = player:getMaxHp() - player:getHandcardNum()
+					if n > 5 then n = 5 end
+					if n > 0 then
+						can_invoke = true
+					end
+				end
+				player:loseAllMarks("@duoshiMark")
+				if can_invoke then
+					return self:objectName()
+				end
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data)
+		if player:askForSkillInvoke("duoshi", data) then
+			room:broadcastSkillInvoke("duoshi")
+			room:notifySkillInvoked(player, "duoshi")
+			return true 
+		end
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		local n = player:getMaxHp() - player:getHandcardNum()
+		if n > 5 then n = 5 end
+		if n > 0 then
+			player:drawCards(n)
+		end
+		return false
+	end
+}
+luxun:addSkill("qianxun")
+luxun:addSkill(lianying)
+luxun:addSkill(Eduoshi)
+luxun:addSkill(duoshi_trigger)
+sgs.insertRelatedSkills(extension, "Eduoshi", "#duoshi_trigger")
 
 -----单骑-----
 
@@ -5954,9 +6022,6 @@ end
 if not sgs.Sanguosha:getSkill("zhaxiang") then
 skillList:append(zhaxiang)
 end
-if not sgs.Sanguosha:getSkill("lianying") then
-skillList:append(lianying)
-end
 if not sgs.Sanguosha:getSkill("danqi") then
 skillList:append(danqi)
 end
@@ -5970,9 +6035,6 @@ for i = #allNames, 1, -1 do
 	end
 	if allNames[i] == "huanggai" then
 		general:addSkill("zhaxiang")
-	end
-	if allNames[i] == "luxun" then
-		general:addSkill("lianying")
 	end
 	if allNames[i] == "guanyu" then
 		general:addSkill("danqi")
@@ -6954,8 +7016,11 @@ sgs.LoadTranslationTable{
 	[":Ekuanggu"] = "每当你对距离1以内的一名角色造成1点伤害后，你可以回复1点体力，或者摸一张牌。",
 	["$Ekuanggu1"] = "哼！也不看看我是何人。",
 	["$Ekuanggu2"] = "嗯哈哈哈哈哈哈，赢你，还不容易！",
+	["Eduoshi"] = "度势",
+	["duoshi_trigger"] = "度势",
+	[":Eduoshi"] = "你可以将一张牌当做【以逸待劳】使用（出牌阶段每种花色限一次）。你的回合结束后，若你于此回合使用【以逸待劳】的次数不小于3，你将手牌补至体力上限（最多5张）。",
 	["lianying"] = "连营",
-	[":lianying"] = "副将技，每当你失去最后的手牌后，你可以摸一张牌。你明置武将牌后，若你有技能“度势”，你失去技能“度势”。",
+	[":lianying"] = "副将技，每当你失去最后的手牌后，你可以摸一张牌。",
 	["$lianying1"] = "旧的不去，新的不来",
 	["$lianying2"] = "牌不是万能的，但是没牌是万万不能的。",
 	["danqi"] = "单骑",
@@ -7068,6 +7133,7 @@ sgs.LoadTranslationTable{
 	["@qujiCard"] = "你可以弃置%arg张%arg2手牌并指定一名已受伤的其他角色，对其发动“去疾”",
 	["~quji"] = "指定一名已受伤的其他角色",
 	["@wenji-card"] = "你可以将一张牌交给%src",
+	["yinbing-invoke"] = "你可以指定至多%arg名角色，分别弃置指定角色的一张牌",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
@@ -7116,6 +7182,7 @@ sgs.LoadTranslationTable{
 	["@zili"] = "自立",
 	["@xun"] = "训",
 	["@fulin"] = "腹麟",
+	["@duoshiMark"] = "度势",
 	
 	
 	
