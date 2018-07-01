@@ -1,4 +1,4 @@
-local ban_list = {"zhonghui", "guojia", "xunyu", "lidian", "simalang", "dianwei", "chenqun", "xizhicai", "caopi", "zhangchunhua", "xiahoushi", "pangtong", "menghuo", "mizhu", "huangzhong", "ganfuren", "xiaoqiao", "sunjian", "sunce", "zumao", "huanggai", "zhoutai", "jiaxu", "tianfeng", "yuji", "zhangren", "zhangxiu", "liubiao", "hejin", "dongzhuo", "huangquan_shu", "huangquan_wei"}
+local ban_list = {"zhonghui", "guojia", "xunyu", "lidian", "simalang", "dianwei", "chenqun", "xizhicai", "caopi", "zhangchunhua", "xiahoushi", "pangtong", "liaohua", "menghuo", "mizhu", "huangzhong", "ganfuren", "xiaoqiao", "sunjian", "sunce", "zumao", "huanggai", "zhoutai", "jiaxu", "tianfeng", "yuji", "zhangren", "zhangxiu", "liubiao", "hejin", "dongzhuo", "huangquan_shu", "huangquan_wei"}
 local hash, multy_kingdom = init(extra_general_init(), ban_list)
 game_use_value, defult_value = initValue()
 shalu = sgs.CreateTriggerSkill{
@@ -55,22 +55,30 @@ shalu = sgs.CreateTriggerSkill{
 				room:setPlayerMark(p, "@shalu4_intelligence", intelligence / 2)
 				room:setPlayerMark(p, "@shalu5_health", health / 2)
 			end
-		elseif event == sgs.DamageCaused then
+		--[[elseif event == sgs.DamageCaused then
 			local offense = player:getMark("@shalu2_offense")
 			local intelligence = player:getMark("@shalu4_intelligence")
 			local damage = data:toDamage()
 			local damage_base = damage.damage
 			if damage.chain or damage.transfer  then return false end
 			damage.damage = damage_base * offense * (1 + 0.01 * intelligence)
-			data:setValue(damage)
+			data:setValue(damage)--]]
 		elseif event == sgs.DamageInflicted then
-			local defense = player:getMark("@shalu3_defense")
-			local intelligence = player:getMark("@shalu4_intelligence")
 			local damage = data:toDamage()
-			if damage.chain or damage.transfer  then return false end
 			local damage_base = damage.damage
-			damage.damage = damage.damage - defense * (1 + 0.01 * intelligence)
-			if damage.damage < 0 then 
+			local to_defense = player:getMark("@shalu3_defense")
+			local to_intelligence = player:getMark("@shalu4_intelligence")
+			local from_offense
+			local from_intelligence
+			if damage.from then
+				from_offense = damage.from:getMark("@shalu2_offense")
+				from_intelligence = damage.from:getMark("@shalu4_intelligence")
+				damage.damage = damage_base * from_offense * (1 + 0.01 * from_intelligence) - to_defense * (1 + 0.01 * to_intelligence)
+			else
+				damage.damage = damage_base * 100 - to_defense * (1 + 0.01 * to_intelligence)
+			end
+			if damage.chain or damage.transfer  then return false end
+			if damage.damage <= 0 then 
 				return true
 			end
 			data:setValue(damage)
@@ -97,19 +105,6 @@ shalu = sgs.CreateTriggerSkill{
 		end
 	end
 }
-fengkuang_maxCard = sgs.CreateMaxCardsSkill{  --手牌上限
-    name = "fengkuang_maxCard" ,
-	global = true,
-    extra_func = function(self, target)
-		if target:getMark("@shalu1_maxhp") > 0 then
-			return target:getHp() / 10 - 1
-		end
-    end
-}
-local skillList = sgs.SkillList()
-if not sgs.Sanguosha:getSkill("fengkuang_maxCard") then
-skillList:append(fengkuang_maxCard)
-end
 fengkuang_mode = {
 	name = "fengkuang",
 	expose_role = false,

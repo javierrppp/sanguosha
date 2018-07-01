@@ -483,15 +483,18 @@ renxin = sgs.CreateTriggerSkill{
 	events = {sgs.DamageInflicted},
 	can_trigger = function(self, event, room, player, data)
 		local damage = data:toDamage()
-		if damage.to and damage.to:isAlive() and (damage.to:getHp() == 1) then
-			local skill_list, player_list = {}, {}
-			for _,p in sgs.qlist(room:getOtherPlayers(damage.to)) do
-				if p:hasSkill(self:objectName()) and p:canDiscard(p, "he") then
-					table.insert(skill_list, self:objectName())
-					table.insert(player_list, p:objectName())
+		if damage.to and damage.to:isAlive() then 
+			--疯狂杀戮
+			if damage.to:getHp() == 1 or (damage.to:getMark("@shalu1_maxhp") > 0 and damage.to:getHp() <= 150) then
+				local skill_list, player_list = {}, {}
+				for _,p in sgs.qlist(room:getOtherPlayers(damage.to)) do
+					if p:hasSkill(self:objectName()) and p:canDiscard(p, "he") then
+						table.insert(skill_list, self:objectName())
+						table.insert(player_list, p:objectName())
+					end
 				end
+				return table.concat(skill_list, "|"), table.concat(player_list, "|")
 			end
-			return table.concat(skill_list, "|"), table.concat(player_list, "|")
 		end
 		return ""
 		--[[elseif (event == sgs.ChoiceMade) and player:hasSkill(self:objectName()) then  --根据规则翻面已改为效果而非消耗
@@ -4272,6 +4275,9 @@ tuifeng = sgs.CreateMasochismSkill{
 		if player:isNude() then return "" end
 		local damage = data:toDamage()
 		local trigger_list = {}
+		if target:getMark("@shalu1_maxhp") > 0 then
+			return self:objectName()
+		end
 		for i = 1, damage.damage, 1 do
 			table.insert(trigger_list, self:objectName())
 		end
@@ -6714,7 +6720,7 @@ sgs.LoadTranslationTable{
 	["~litong"] = "战死沙场，快哉",
 	["#litong"] = "万亿吾独往",
 	["tuifeng"] = "推锋",
-	[":tuifeng"] = "当你受到1点伤害后，你可以将一张牌置于武将牌上，称为“锋”；准备阶段开始时，若你的武将牌上有“锋”，你移去所有“锋”，摸2X张牌，若如此做，你于此回合的出牌阶段内可以多使用X张【杀】（X为你此次移去的“锋”数）。",
+	[":tuifeng"] = "当你受到1点伤害后，你可以将一张牌置于武将牌上，称为“锋”；准备阶段开始时，若你的武将牌上有“锋”，你移去所有“锋”，摸2X张牌，若如此做，你于此回合的出牌阶段内可以多使用X张【杀】（X为你此次移去的“锋”数）。<br /><font color=\"pink\">注：疯狂杀戮模式下，技能发动时机调整为“受到伤害后”。</font>",
 	["$tuifeng1"] = "摧锋陷阵，以杀贼首。",
 	["$tuifeng2"] = "敌锋之锐，我已尽知。",
 	["liru"] = "李儒",
@@ -6974,7 +6980,7 @@ sgs.LoadTranslationTable{
 	["$chengxiang1"] = "依我看，小事一桩。",
 	["$chengxiang2"] = "孰重孰轻，一称便知。",
 	["renxin"] = "仁心",
-	[":renxin"] = "当其他角色受到伤害时，若其体力值为1，你可以弃置一张装备牌，叠置，然后防止此伤害。",
+	[":renxin"] = "当其他角色受到伤害时，若其体力值为1，你可以弃置一张装备牌，叠置，然后防止此伤害。<br /><font color=\"pink\">注：疯狂杀戮模式下，发动条件调整为“若其体力值不大于150”。</font>",
 	["$renxin1"] = "仁者爱人，人恒爱之。",
 	["$renxin2"] = "有我在，别怕。",
 	["xiahoushi"] = "夏侯氏",
