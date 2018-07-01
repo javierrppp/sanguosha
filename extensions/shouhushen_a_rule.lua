@@ -1,5 +1,7 @@
 --一个不知道为什么的bug迫使我把代码写在了这里
-local hash, multy_kingdom = init(extra_general_init(), {"zhonghui"})
+local ban_list = {"zhonghui", "guojia", "xunyu", "simalang", "dianwei", "chenqun", "xizhicai", "caopi", "zhangchunhua", "xiahoushi", "pangtong", "menghuo", "mizhu", "huangzhong", "ganfuren", "xiaoqiao", "sunjian", "sunce", "zumao", "huanggai", "zhoutai", "jiaxu", "tianfeng", "yuji", "zhangren", "zhangxiu", "liubiao", "hejin", "dongzhuo"}
+local hash, multy_kingdom = init(extra_general_init(), ban_list)
+--local hash, multy_kingdom = init(extra_general_init(), {"zhonghui"})
 rule = sgs.CreateTriggerSkill{ 
 	name = "rule" ,
 	priority = 0,  --先进行君主替换
@@ -88,17 +90,4 @@ rule = sgs.CreateTriggerSkill{
 		end
 		return false
 	end
-}
-erhu_rule = sgs.CreateTriggerSkill{
-	name = "erhu_rule",
-	events = {sgs.GameStart},
-	on_effect = function(self, event, room, player, data,ask_who)
-		--[[for key,value in pairs(multy_kingdom) do
-			sendMsg(room, ".."..table.concat(value, "+"))
-		end
-		sendMsg(room, "hashNum:" .. #hash)
-		local general_name = table.concat(hash, "+")
-		sendMsg(room, "?" .. general_name)--]]
-	end,
-	priority = 1,
 }

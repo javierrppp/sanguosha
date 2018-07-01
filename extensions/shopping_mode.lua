@@ -272,7 +272,7 @@ shop_mode = {
 				table.insert(selected,general)
 			end
 		end
-		room:chooseGenerals(room:getPlayers(),false,true)
+		room:chooseGenerals(room:getPlayers(),true,true)
 		--这部分将在附录A中介绍。
 		for i = 1,8,1 do --依次设置genera1、general2。
 			local player = room:getPlayers():at(i-1)

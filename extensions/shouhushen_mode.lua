@@ -1,4 +1,5 @@
 local hash, multy_kingdom = init(extra_general_init(), {})
+
 shouhu_mode = {
 	name = "shouhu_mode",
 	expose_role = false,
@@ -22,7 +23,7 @@ shouhu_mode = {
 				table.insert(selected,general)
 			end
 		end
-		room:chooseGenerals(room:getPlayers(),false,true)
+		room:chooseGenerals(room:getPlayers(),true,true)
 		for i = 1,8,1 do --依次设置genera1、general2。
 			local player = room:getPlayers():at(i-1)
 			local general = sgs.Sanguosha:getGeneral(player:getGeneralName())
