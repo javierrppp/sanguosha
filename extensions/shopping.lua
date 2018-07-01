@@ -20,7 +20,11 @@ shoupaishangxian = sgs.CreateMaxCardsSkill{  --手牌上限
     extra_func = function(self, target)
 		local x = target:getMark("@shangxianjianyi")
 		local y = target:getMark("@shangxianjiayi")
-		return y - x
+		if target:getMark("@shalu1_maxhp") > 0 then
+			return math.floor(y - x - target:getHp() + target:getHp() / 100)
+		else
+			return y - x
+		end
     end
 }
 shoupaishangxianmarklose = sgs.CreateTriggerSkill{  --清空手牌上限mark

@@ -5709,8 +5709,9 @@ duoshi_trigger = sgs.CreateTriggerSkill{
 				room:setPlayerProperty(player, "duoshiProp", sgs.QVariant(""))
 				local can_invoke = false
 				if player:getMark("@duoshiMark") >= 3 then
-					local n = player:getMaxHp() - player:getHandcardNum()
-					if n > 5 then n = 5 end
+					local hp = player:getMaxHp()
+					if hp > 5 then hp = 5 end
+					local n = hp - player:getHandcardNum()
 					if n > 0 then
 						can_invoke = true
 					end
@@ -5732,8 +5733,9 @@ duoshi_trigger = sgs.CreateTriggerSkill{
 		return false 
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
-		local n = player:getMaxHp() - player:getHandcardNum()
-		if n > 5 then n = 5 end
+		local hp = player:getMaxHp()
+		if hp > 5 then hp = 5 end
+		local n = hp - player:getHandcardNum()
 		if n > 0 then
 			player:drawCards(n)
 		end

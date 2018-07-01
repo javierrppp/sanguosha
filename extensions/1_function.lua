@@ -291,12 +291,12 @@ function initValue(extra_list, ban_list)
 	game_use_value["luxun"] = { 360, 151, 56, 86, 100 }
 	game_use_value["sunshangxiang"] = { 315, 100, 48, 68, 100 }
 	game_use_value["taishici"] = { 488, 199, 75, 54, 100 }
-	game_use_value["lusu"] = { 330, 67, 60, 83, 100 }
+	game_use_value["lusu"] = { 330, 86, 60, 83, 100 }
 	game_use_value["erzhang"] = { 322, 71, 55, 80, 100 }
 	game_use_value["dingfeng"] = { 441, 174, 56, 65, 100 }
 	game_use_value["huatuo"] = { 300, 50, 20, 78, 300 }
 	game_use_value["lvbu"] = { 600, 230, 73, 20, 100 }
-	game_use_value["diaochan"] = { 302, 50, 29, 78, 160 }
+	game_use_value["diaochan"] = { 302, 66, 29, 78, 160 }
 	game_use_value["yuanshao"] = { 500, 122, 66, 51, 100 }
 	game_use_value["yanliangwenchou"] = { 480, 191, 67, 55, 100 }
 	game_use_value["pangde"] = { 454, 166, 61, 58, 100 }
@@ -308,7 +308,7 @@ function initValue(extra_list, ban_list)
 	game_use_value["panfeng"] = { 411, 155, 55, 55, 150 }
 	game_use_value["zoushi"] = { 322, 71, 38, 70, 150 }
 	game_use_value["dengai"] = { 401, 161, 75, 72, 100 }
-	game_use_value["caohong"] = { 305, 71, 44, 90, 80 }
+	game_use_value["caohong"] = { 305, 85, 44, 90, 80 }
 	game_use_value["jiangwei"] = { 408, 174, 74, 88, 100 }
 	game_use_value["jiangwanfeiyi"] = { 333, 110, 48, 79, 100 }
 	game_use_value["jiangqin"] = { 447, 151, 70, 65, 100 }
@@ -317,7 +317,7 @@ function initValue(extra_list, ban_list)
 	game_use_value["lidian"] = { 356, 147, 62, 77, 100 }
 	game_use_value["zangba"] = { 448, 155, 62, 54, 100 }
 	game_use_value["madai"] = { 474, 156, 55, 55, 100 }
-	game_use_value["mifuren"] = { 300, 57, 32, 74, 150 }
+	game_use_value["mifuren"] = { 300, 68, 32, 74, 150 }
 	game_use_value["chenwudongxi"] = { 466, 147, 70, 56, 100 }
 	game_use_value["huaxiong"] = { 540, 181, 64, 41, 100 }
 	game_use_value["sunhao"] = { 660, 110, 64, 38, 100 }
@@ -327,7 +327,7 @@ function initValue(extra_list, ban_list)
 	game_use_value["jianyong"] = { 360, 88, 56, 82, 100 }
 	game_use_value["xushu"] = { 351, 67, 61, 85, 100 }
 	game_use_value["liuxie"] = { 355, 55, 55, 80, 100 }
-	game_use_value["buzhi"] = { 334, 86, 52, 82, 100 }
+	game_use_value["buzhi"] = { 334, 100, 52, 82, 100 }
 	game_use_value["litong"] = { 467, 147, 71, 55, 100 }
 	game_use_value["liru"] = { 334, 125, 47, 80, 100 }
 	game_use_value["yufan"] = { 327, 94, 51, 81, 100 }
@@ -340,10 +340,10 @@ function initValue(extra_list, ban_list)
 	game_use_value["masu"] = { 334, 112, 51, 74, 100 }
 	game_use_value["maliang"] = { 319, 99, 55, 83, 100 }
 	game_use_value["xuezong"] = { 351, 81, 84, 80, 100 }
-	game_use_value["xushi"] = { 322, 61, 38, 76, 140 }
+	game_use_value["xushi"] = { 322, 73, 38, 76, 140 }
 	game_use_value["wangji"] = { 361, 110, 44, 78, 100 }
-	game_use_value["caojie"] = { 332, 58, 34, 72, 150 }
-	game_use_value["chengong"] = { 310, 55, 55, 92, 100 }
+	game_use_value["caojie"] = { 332, 70, 34, 72, 150 }
+	game_use_value["chengong"] = { 310, 99, 55, 92, 100 }
 	game_use_value["caochong"] = { 479, 137, 65, 57, 100 }
 	game_use_value["meng_zhaoyun"] = { 441, 198, 74, 60, 100 }
 	game_use_value["meng_luxun"] = { 360, 151, 56, 86, 100 }

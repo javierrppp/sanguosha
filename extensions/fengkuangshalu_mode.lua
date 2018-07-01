@@ -1,4 +1,4 @@
-local ban_list = {"zhonghui", "guojia", "xunyu", "simalang", "dianwei", "chenqun", "xizhicai", "caopi", "zhangchunhua", "xiahoushi", "pangtong", "menghuo", "mizhu", "huangzhong", "ganfuren", "xiaoqiao", "sunjian", "sunce", "zumao", "huanggai", "zhoutai", "jiaxu", "tianfeng", "yuji", "zhangren", "zhangxiu", "liubiao", "hejin", "dongzhuo", "huangquan_shu", "huangquan_wei"}
+local ban_list = {"zhonghui", "guojia", "xunyu", "lidian", "simalang", "dianwei", "chenqun", "xizhicai", "caopi", "zhangchunhua", "xiahoushi", "pangtong", "menghuo", "mizhu", "huangzhong", "ganfuren", "xiaoqiao", "sunjian", "sunce", "zumao", "huanggai", "zhoutai", "jiaxu", "tianfeng", "yuji", "zhangren", "zhangxiu", "liubiao", "hejin", "dongzhuo", "huangquan_shu", "huangquan_wei"}
 local hash, multy_kingdom = init(extra_general_init(), ban_list)
 game_use_value, defult_value = initValue()
 shalu = sgs.CreateTriggerSkill{

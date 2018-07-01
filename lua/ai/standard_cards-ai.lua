@@ -884,6 +884,11 @@ function SmartAI:useCardPeach(card, use)
 			mustusepeach = true
 			break
 		end
+		--疯狂屠戮
+		if self.player:getMark("@shalu1_maxhp") > 0 and self.player:getHp() < self.player:getMaxHp() * 0.3 then
+			mustusepeach = true
+		end
+		break
 	end
 
 	local maxCards = self:getOverflow(self.player, true)
@@ -914,6 +919,10 @@ function SmartAI:useCardPeach(card, use)
 		self:sortByKeepValue(cards)
 		local handcardNum = self.player:getHandcardNum() - (useJieyinCard and 2 or 0)
 		local discardNum = handcardNum - maxCards
+		--疯狂屠戮
+		if self.player:getMark("@shalu1_maxhp") > 0 then
+			discardNum = handcardNum - maxCards * 0.6
+		end
 		if discardNum > 0 then
 			for i, c in ipairs(cards) do
 				if c:getEffectiveId() == card:getEffectiveId() then
@@ -2684,14 +2693,14 @@ function SmartAI:useCardIndulgence(card, use)
 	if #enemies == 0 then return end
 
 	local getvalue = function(enemy)
-		if enemy:hasSkills("jgjiguan_qinglong|jgjiguan_baihu|jgjiguan_zhuque|jgjiguan_xuanwu") then return -101 end
-		if enemy:hasSkills("jgjiguan_bian|jgjiguan_suanni|jgjiguan_chiwen|jgjiguan_yazi") then return -101 end
-		if enemy:hasShownSkill("qianxun") then return -101 end
-		if enemy:hasShownSkill("weimu") and card:isBlack() then return -101 end
-		if enemy:containsTrick("indulgence") then return -101 end
-		if enemy:hasShownSkill("qiaobian") and not enemy:containsTrick("supply_shortage") and not enemy:containsTrick("indulgence") then return -101 end
+		if enemy:hasSkills("jgjiguan_qinglong|jgjiguan_baihu|jgjiguan_zhuque|jgjiguan_xuanwu") then return -10001 end
+		if enemy:hasSkills("jgjiguan_bian|jgjiguan_suanni|jgjiguan_chiwen|jgjiguan_yazi") then return -10001 end
+		if enemy:hasShownSkill("qianxun") then return -10001 end
+		if enemy:hasShownSkill("weimu") and card:isBlack() then return -10001 end
+		if enemy:containsTrick("indulgence") then return -10001 end
+		if enemy:hasShownSkill("qiaobian") and not enemy:containsTrick("supply_shortage") and not enemy:containsTrick("indulgence") then return -10001 end
 		if zhanghe_seat > 0 and (self:playerGetRound(zhanghe) <= self:playerGetRound(enemy) and self:enemiesContainsTrick() <= 1 or not enemy:faceUp()) then
-			return -101 end
+			return -10001 end
 
 		local value = enemy:getHandcardNum() - enemy:getHp()
 
@@ -2719,7 +2728,7 @@ function SmartAI:useCardIndulgence(card, use)
 	table.sort(enemies, cmp)
 
 	local target = enemies[1]
-	if getvalue(target) > -100 then
+	if getvalue(target) > -10000 then
 		use.card = card
 		if use.to then use.to:append(target) end
 		return
