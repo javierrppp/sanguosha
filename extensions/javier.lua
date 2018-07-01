@@ -619,6 +619,7 @@ huimin = sgs.CreateTriggerSkill{
 		end
 		local current_player = to
 		room:fillAG(huimin_cards)
+		local t = sgs.SPlayerList()
 		while true do
 			if table.contains(target_list, current_player:objectName()) then
 				local id = room:askForAG(current_player, huimin_cards, false, self:objectName())
@@ -627,6 +628,7 @@ huimin = sgs.CreateTriggerSkill{
 				huimin_cards:removeOne(id)
 			end
 			current_player = current_player:getNextAlive()
+			if t:contains(current_player) then break else t:append(current_player) end
 			if huimin_cards:length() == 0 then break end
 		end
 		room:clearAG()

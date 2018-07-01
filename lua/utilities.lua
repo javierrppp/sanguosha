@@ -76,15 +76,6 @@ sgs.addNewKingdom = function(kingdom_name,color)
 	end
 end
 
-function table.Shuffle(list)
-	local result = {}
-	while #list > 0 do
-		local value = list[math.random(1,#list)]
-		table.insert(result,value)
-		table.removeOne(list,value)
-	end
-	return result
-end
 -- utilities, i.e: convert QList<const Card> to Lua's native table
 function sgs.QList2Table(qlist)
 	local t = {}
@@ -145,18 +136,6 @@ function table:contains(element)
 	end
 end
 
-function table:removeOne(element)
-	if #self == 0 or type(self[1]) ~= type(element) then return false end
-
-	for i = 1, #self do
-		if self[i] == element then
-			table.remove(self, i)
-			return true
-		end
-	end
-	return false
-end
-
 function table:removeAll(element)
 	if #self == 0 or type(self[1]) ~= type(element) then return 0 end
 	local n = 0
@@ -181,6 +160,18 @@ function table:removeTable(list)
 	end
 end
 
+function table:removeOne(element)
+	if #self == 0 or type(self[1]) ~= type(element) then return false end
+
+	for i = 1, #self do
+		if self[i] == element then
+			table.remove(self, i)
+			return true
+		end
+	end
+	return false
+end
+
 function table.copyFrom(list)
 	local l = {}
 	for _, e in ipairs(list) do
@@ -188,6 +179,28 @@ function table.copyFrom(list)
 	end
 	return l
 end
+
+function table.Shuffle(list)
+	local result = {}
+	local list_copy = table.copyFrom(list)
+	while #list_copy > 0 do
+		local value = list_copy[math.random(1,#list_copy)]
+		table.insert(result,value)
+		table.removeOne(list_copy,value)
+	end
+	return result
+end
+
+--原来的shuffle是直接更改的对象，导致会出现很多bug
+--[[function table.Shuffle(list)
+	local result = {}
+	while #list > 0 do
+		local value = list[math.random(1,#list)]
+		table.insert(result,value)
+		table.removeOne(list,value)
+	end
+	return result
+end--]]
 
 function table:indexOf(value, from)
 	from = from or 1
