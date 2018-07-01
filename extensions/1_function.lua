@@ -73,6 +73,7 @@ function init(extra_list, ban_list)
 		end
 	end
 	for _,general in pairs(extra_list) do
+		if table.contains(ban_list, general) then continue end
 		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun") then
 			local generalRealName
 			if general:endsWith("_wu") then
@@ -134,6 +135,7 @@ function initByKingdom(extra_list, ban_list)
 		end
 	end
 	for _,general in pairs(extra_list) do
+		if table.contains(ban_list, general) then continue end
 		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun") then
 			local generalRealName
 			if general:endsWith("_wu") then
@@ -326,7 +328,7 @@ function initValue(extra_list, ban_list)
 	game_use_value["xushu"] = { 351, 67, 61, 85, 100 }
 	game_use_value["liuxie"] = { 355, 55, 55, 80, 100 }
 	game_use_value["buzhi"] = { 334, 86, 52, 82, 100 }
-	game_use_value["litong"] = { 467, 147, 71, 100 }
+	game_use_value["litong"] = { 467, 147, 71, 55, 100 }
 	game_use_value["liru"] = { 334, 125, 47, 80, 100 }
 	game_use_value["yufan"] = { 327, 94, 51, 81, 100 }
 	game_use_value["liyan"] = { 334, 140, 61, 70, 100 }
