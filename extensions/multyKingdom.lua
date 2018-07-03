@@ -412,18 +412,19 @@ jianji = sgs.CreateViewAsSkill{
 			return id == to_select:getId()
 		end
 	end,
-	view_as = function(self) 
+	view_as = function(self, cards)
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local card = jianjiCard:clone()
 			card:setShowSkill(self:objectName())
 			return card
 		else
-			local id = sgs.Self:property("jianjiProp"):toInt()
+			return cards[1]
+			--[[local id = sgs.Self:property("jianjiProp"):toInt()
 			local card = sgs.Sanguosha:getCard(id)
 			local acard = sgs.Sanguosha:cloneCard(card:objectName(), card:getSuit(), card:getNumber())
 			acard:setSkillName("jianji")
 			acard:addSubcard(card)
-			return acard
+			return acard--]]
 		end
 	end,
 	enabled_at_play = function(self, player)
@@ -458,17 +459,17 @@ jianjiCard = sgs.CreateSkillCard{
 		if card:isKindOf("Peach") and not to:isWounded() then
 			can_use = false
 		end
-		if card:isKindOf("EquipCard") then 
+		--[[if card:isKindOf("EquipCard") then 
 			if room:askForSkillInvoke(to, "jianji", sgs.QVariant("jianjiUse:" .. id .. "::" .. card:objectName())) then
 				room:useCard(sgs.CardUseStruct(card, to, to))
 			end
-		else
+		else--]]
 			if can_use then
 				room:setPlayerProperty(to, "jianjiProp", sgs.QVariant(id))
 				room:askForUseCard(to, "@@jianji", ("#jianji:%s:%s:%s:%s"):format(card:objectName(),card:getSuitString(),card:getNumber(),card:getEffectiveId()))
 				room:setPlayerProperty(to, "jianjiProp", sgs.QVariant(-1))
 			end
-		end
+		--end
 	end
 }
 huangquan_shu:addSkill(dianhu)
@@ -667,7 +668,7 @@ sgs.LoadTranslationTable{
 	["jianji"] = "谏计",
 	[":jianji"] = "出牌阶段限一次，你可以令一名与你势力相同的角色摸一张牌，然后其可以使用该牌。",
 	["$jianji1"] = "锦上添花，不如雪中送炭",
-	["$jianji2"] = "密计交于将军，可解燃眉之困",
+	["$jianji2"] = "秘计交于将军，可解燃眉之困",
 	["dianhu-invoke"] = "请指定一名被点虎角色",
 	["#jianji"] = "你可以使用该牌： 【%src】",
 	["jianjiCard:jianjiUse"] = "你可以使用该牌： 【%arg】",

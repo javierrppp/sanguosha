@@ -1244,6 +1244,42 @@ function sgs.ai_cardneed.tuifeng(to, card)
 	return to:isNude()
 end
 
+sgs.ai_skill_exchange.shaluTuifeng = function(self, pattern, max_num, min_num, expand_pile)
+	if not self:willShowForMasochism() then return {} end
+	local to_discard = {}
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	for _,c in ipairs(cards) do
+		if not (c:isKindOf("Peach") or c:isKindOf("Analeptic")) then
+			table.insert(to_discard, c:getEffectiveId())
+			return to_discard
+		end
+	end
+	return {}
+end
+sgs.ai_need_damaged.shaluTuifeng = function(self, attacker, player)
+	if not player:hasSkill("shaluTuifeng") then return false end
+	local invoke = false
+	local hp_limit = 4
+	local enemies = self:getEnemies(player)
+	if not next(enemies) then return false end
+	self:sort(enemies, "hp")
+	for _,p in ipairs(enemies) do
+		if player:inMyAttackRange(p) and player:canSlash(p) then
+			invoke = true
+			if self:isWeak(p) then hp_limit = 3 end
+			break
+		end
+	end
+	if invoke and player:getCards("he"):length() > 3 and ( player:getHp() >= hp_limit or self:getCardsNum("Peach") > 1) and not self:willSkipPlayPhase(player) then return true end
+	return false 
+end
+function sgs.ai_cardneed.shaluTuifeng(to, card)
+	return to:isNude()
+end
+
+
 -----李儒-----
 
 sgs.ai_skill_playerchosen.juece = function(self, targetlist)
@@ -2880,6 +2916,9 @@ sgs.ai_skill_choice["Ekuanggu"] = function(self, choices, data)
 	end
 end
 
+sgs.ai_skill_invoke.shaluKuanggu = function(self, data)
+    return true
+end
 -----奸雄-----
 
 sgs.ai_skill_invoke.Ejianxiong = function(self, data)
@@ -4247,6 +4286,16 @@ function SmartAI:hasrenxinEffect_(damageStruct, needFaceDown, simulateDamage)
 end
 sgs.renxin_keep_value = sgs.xiaoji_keep_value
 
+-----杀戮模式*曹冲-----
+
+sgs.ai_cardneed.shaluRenxin = function(to, card, self)
+	for _,friend in ipairs(self.friends_noself) do
+		if self:isWeak(friend) then
+			return sgs.ai_cardneed.shensu(to, card, self)
+		end
+	end
+end
+
 -----夏侯氏-----
 sgs.ai_skill_invoke.qiaoshi = function(self, data)
 	local room = self.room
@@ -4746,6 +4795,13 @@ end
 sgs.ai_skill_use["@@jianji"]=function(self,prompt)
     self:updatePlayers()
 	local card = prompt:split(":")
+	if (sgs.Sanguosha:getCard(card[5]):isKindOf("Weapon") and not self.player:getWeapon()) or
+	   (sgs.Sanguosha:getCard(card[5]):isKindOf("Armor") and not self.player:getArmor()) or
+	   (sgs.Sanguosha:getCard(card[5]):isKindOf("DefensiveHorse") and not self.player:getDefensiveHorse()) or
+	   (sgs.Sanguosha:getCard(card[5]):isKindOf("OffensiveHorse") and not self.player:getOffensiveHorse()) or
+	   (sgs.Sanguosha:getCard(card[5]):isKindOf("Treasure") and not self.player:getTreasure()) then
+	    return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
+	end
 	if card[2] == "slash" or card[2] == "fire_slash" or card[2] == "thunder_slash" then
 	    self:sort(self.enemies, "defense")
 		local targets = {}
@@ -4756,13 +4812,13 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
 	end
 	if card[2] == "peach" or card[2] == "threaten_emperor" or card[2] == "await_exhausted" or card[2] == "ex_nihilo" or card[2] == "amazing_grace" then
-		return ("%s:jianji[%s:%s]=%d&jianji"):format(card[2], suit, number, card[5])
+		return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
 	end
 	if card[2] == "savage_assault" or card[2] == "archery_attack"  then
 		local is_weak = false
@@ -4774,7 +4830,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if not is_weak then
-			return ("%s:jianji[%s:%s]=%d&jianji"):format(card[2], suit, number, card[5])
+			return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
 		end
 	end
 	if card[2] == "god_salvation" then
@@ -4792,7 +4848,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			need_recover = true
 		end
 		if need_recover then
-			return ("%s:jianji[%s:%s]=%d&jianji"):format(card[2], suit, number, card[5])
+			return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
 		end
 	end
 	if card[2] == "iron_chain" then
@@ -4811,7 +4867,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 		        end
 			end
 			if #targets > 0 then
-				return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+				return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 			else
 			    return "."
 			end
@@ -4828,7 +4884,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 				end
 			end
 			if (#targets + chained_enemy) > 1 then
-				return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+				return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 			else
 			    return "."
 			end
@@ -4836,7 +4892,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 	end
 	if card[2] == "burning_camps" then
 		if self:isEnemy(self.player:getNextAlive()) then
-			return ("%s:jianji[%s:%s]=%d&jianji"):format(card[2], suit, number, card[5])
+			return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
 		end
 	end
 	if card[2] == "befriend_attacking" then
@@ -4858,7 +4914,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -4873,7 +4929,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -4888,7 +4944,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -4903,7 +4959,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -4919,7 +4975,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -4941,7 +4997,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 1 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -4956,7 +5012,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -4973,7 +5029,7 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -4988,13 +5044,16 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:jianji[%s:%s]=%d&jianji->%s"):format(card[2], suit, number, card[5], table.concat(targets,"+"))
+			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
 	end
 	return "."
 end
+
+-----群*马超-----
+
 sgs.ai_skill_playerchosen["shichou"] = function(self, targets) 
     self:sort(self.enemies, "defense")
 	local targets_list = {}
@@ -5012,4 +5071,280 @@ sgs.ai_skill_playerchosen["shichou"] = function(self, targets)
 	self:log("!!!!!!")
 		return targets_list
 	end
+end
+
+-----杀戮模式*郭嘉-----
+
+sgs.ai_skill_invoke.shaluTiandu = function(self, data)
+	return true
+end
+sgs.ai_skill_invoke.zhinang = function(self, data)
+	return true
+end
+sgs.ai_skill_use["@@zhinang"]=function(self,prompt)
+    self:updatePlayers()
+	local cards = {}
+	local ids = self.player:property("zhinangProp"):toString():split("+")
+	for _, id in pairs(ids) do
+		table.insert(cards, sgs.Sanguosha:getCard(id))
+	end
+	self:sortByUseValue(cards, true)
+	for _, card in pairs(cards) do 
+		self:log("cardSuit:" .. card:getSuit())
+		if (card:isKindOf("Weapon") and not self.player:getWeapon()) or
+		   (card:isKindOf("Armor") and not self.player:getArmor()) or
+		   (card:isKindOf("DefensiveHorse") and not self.player:getDefensiveHorse()) or
+		   (card:isKindOf("OffensiveHorse") and not self.player:getOffensiveHorse()) or
+		   (card:isKindOf("Treasure") and not self.player:getTreasure()) then
+			return ("%s:%s[%s:%s]=%d&zhinang"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId())
+		end
+		if card:isKindOf("Slash") or card:isKindOf("FireSlash") or card:isKindOf("ThunderSlash") then
+			self:sort(self.enemies, "defense")
+			local targets = {}
+			for _,enemy in ipairs(self.enemies) do
+				if (not self:slashProhibit(card, enemy)) and self.player:canSlash(enemy, card) then
+					if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+					table.insert(targets,enemy:objectName())
+				end
+			end
+			if #targets > 0 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+		if card:isKindOf("Peach") or card:isKindOf("ThreatenEmperor") or card:isKindOf("AwaitExhausted") or card:isKindOf("ExNihilo") or card:isKindOf("AmazingGrace") then
+			return ("%s:%s[%s:%s]=%d&zhinang"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId())
+		end
+		if card:isKindOf("SavageAssault") or card:isKindOf("ArcheryAttack")  then
+			local is_weak = false
+			for _, p in sgs.qlist(self.room:getAlivePlayers()) do 
+				if self:isFriend(p) then 
+					if p:getHp() == 1 and self:getCardsNum("Peach") == 0 then 
+						is_weak = true
+					end
+				end
+			end
+			if not is_weak then
+				return ("%s:%s[%s:%s]=%d&zhinang"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId())
+			end
+		end
+		if card:isKindOf("GodSalvation") then
+			local need_recover = false
+			local friend_wounded = 0
+			local enemy_wounded = 0
+			for _, p in sgs.qlist(self.room:getAlivePlayers()) do 
+				if self:isFriend(p) then friend_wounded = friend_wounded + 1
+				elseif self:isEnemy(p) and p:hasShownOneGeneral() then enemy_wounded = enemy_wounded + 1
+				end
+			end
+			local base = 1 
+			if self.player:getKingdom() == "wei" and self.player:getRole() ~= "careerist" then base = 2 end
+			if friend_wounded >= enemy_wounded - 1 then
+				need_recover = true
+			end
+			if need_recover then
+				return ("%s:%s[%s:%s]=%d&zhinang"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId())
+			end
+		end
+		if card:isKindOf("IronChain") then
+			local situation_is_friend = false
+			for _, friend in ipairs(self.friends) do
+				if friend:isChained() and (not friend:isProhibited(friend, card)) then
+					situation_is_friend = true
+				end
+			end
+			if situation_is_friend then
+				local targets = {}
+				for _, friend in ipairs(self.friends) do
+					if friend:isChained() and (not friend:isProhibited(friend, card)) then
+						if #targets >= 2 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+						table.insert(targets,friend:objectName())
+					end
+				end
+				if #targets > 0 then
+					return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+				else
+					return "."
+				end
+			else
+				local chained_enemy = 0
+				local targets = {}
+				for _, enemy in ipairs(self.enemies) do
+					if enemy:isChained() then
+						chained_enemy = chained_enemy + 1
+					end
+					if (not enemy:isChained()) and (not enemy:isProhibited(enemy, card)) then
+						if #targets >= 2 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+						table.insert(targets,enemy:objectName())
+					end
+				end
+				if (#targets + chained_enemy) > 1 then
+					return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+				else
+					return "."
+				end
+			end
+		end
+		if card:isKindOf("BurningCamps") then
+			if self:isEnemy(self.player:getNextAlive()) then
+				return ("%s:%s[%s:%s]=%d&zhinang"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId())
+			end
+		end
+		if card:isKindOf("BefriendAttacking") then
+			self:sort(self.friends, "hp")
+			self:sort(self.enemies, "hp")
+			local targets = {}
+			for _, friend in ipairs(self.friends_noself) do
+				if (friend:getKingdom() ~= self.player:getKingdom()) and (not friend:isProhibited(friend, card)) then
+					if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+					table.insert(targets,friend:objectName())
+				end
+			end
+			if #targets == 0 then
+				for _, enemy in ipairs(self.enemies) do
+					if (not enemy:isKongcheng()) and (not enemy:isProhibited(enemy, card)) then
+						if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+						table.insert(targets,enemy:objectName())
+					end
+				end
+			end
+			if #targets > 0 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+		if card:isKindOf("FireAttack") then
+			self:sort(self.enemies, "hp")
+			local targets = {}
+			for _, enemy in ipairs(self.enemies) do
+				if (not enemy:isKongcheng()) and (not enemy:isProhibited(enemy, card)) then
+					if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+					table.insert(targets,enemy:objectName())
+				end
+			end
+			if #targets > 0 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+		if card:isKindOf("Dismantlement") then
+			self:sort(self.enemies, "handcard")
+			local targets = {}
+			for _, enemy in ipairs(self.enemies) do
+				if (not enemy:isAllNude()) and (not enemy:isProhibited(enemy, card)) then
+					if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+					table.insert(targets,enemy:objectName())
+				end
+			end
+			if #targets > 0 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+		if card:isKindOf("Drowning") then
+			self:sort(self.enemies, "handcard")
+			local targets = {}
+			for _, enemy in ipairs(self.enemies) do
+				if enemy:getEquips():length() > 0 then
+					if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+					table.insert(targets,enemy:objectName())
+				end
+			end
+			if #targets > 0 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+		if card:isKindOf("Snatch") then
+			self:sort(self.enemies, "handcard")
+			local targets = {}
+			for _, enemy in ipairs(self.enemies) do
+				if (not enemy:isAllNude()) and (not enemy:isProhibited(enemy, card)) and
+				self.player:distanceTo(enemy) <= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_DistanceLimit, self.player, card) then
+					if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+					table.insert(targets,enemy:objectName())
+				end
+			end
+			if #targets > 0 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+		if card:isKindOf("Collateral") then
+			self:sort(self.enemies, "handcard")
+			local targets = {}
+			for _, enemy in ipairs(self.enemies) do
+				if enemy:getWeapon() and (not enemy:isProhibited(enemy, card)) then
+					for _, tos in ipairs(self.enemies) do
+						if enemy:objectName() ~= tos:objectName() and
+						enemy:canSlash(tos, sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)) and
+						(not tos:isProhibited(tos, sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0))) then
+							table.insert(targets,enemy:objectName())
+							table.insert(targets,tos:objectName())
+							break
+						end
+					end
+				end
+			end
+			if #targets > 1 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+		if card:isKindOf("Duel") then
+			self:sort(self.enemies, "handcard")
+			local targets = {}
+			for _, enemy in ipairs(self.enemies) do
+				if (not enemy:isProhibited(enemy, card)) then
+					if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+					table.insert(targets,enemy:objectName())
+				end
+			end
+			if #targets > 0 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+		if card:isKindOf("SupplyShortage") then
+			self:sort(self.enemies, "handcard")
+			local targets = {}
+			for _, enemy in ipairs(self.enemies) do
+				if (not enemy:containsTrick("supply_shortage")) and
+				(not enemy:isProhibited(enemy, card)) and
+				self.player:distanceTo(enemy) <= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_DistanceLimit, self.player, card) then
+					table.insert(targets,enemy:objectName())
+					break
+				end
+			end
+			if #targets > 0 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+		if card:isKindOf("Indulgence") then
+			self:sort(self.enemies, "hp")
+			local targets = {}
+			for _, enemy in ipairs(self.enemies) do
+				if (not enemy:containsTrick("indulgence")) and (not enemy:isProhibited(enemy, card)) then
+					table.insert(targets,enemy:objectName())
+					break
+				end
+			end
+			if #targets > 0 then
+				return ("%s:%s[%s:%s]=%d&zhinang->%s"):format(card:objectName(),card:objectName(), card:getSuit(), card:getNumber(), card:getId(), table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+	end
+	return "."
 end

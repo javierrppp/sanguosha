@@ -72,7 +72,7 @@ local isLiangjiang = function(player) --判断该武将是不是五良将
 	if player:getGeneralName() == "yujin" or player:getGeneralName() == "yuejin" or player:getGeneralName() == "xuhuang" or player:getGeneralName() == "zhangliao" or player:getGeneralName() == "zhanghe"  then
 		is = true
 	end
-	if not is and player:getGeneralName() ~= "guojia" and player:getGeneralName() ~= "xunyu" and player:getGeneralName() ~= "chengyu" and player:getGeneralName() ~= "jiaxu" and player:getGeneralName() ~= "xunyou" then
+	if not is and player:getGeneralName() ~= "shalu_guojia" and player:getGeneralName() ~= "guojia" and player:getGeneralName() ~= "xunyu" and player:getGeneralName() ~= "chengyu" and player:getGeneralName() ~= "jiaxu" and player:getGeneralName() ~= "xunyou" then
 		if player:getGeneral2Name() == "yujin" or player:getGeneral2Name() == "yuejin" or player:getGeneral2Name() == "xuhuang" or player:getGeneral2Name() == "zhangliao" or player:getGeneral2Name() == "zhanghe"  then
 			is = true
 		end
@@ -82,11 +82,11 @@ end
 local isMouchen = function(player) --判断该武将是不是五谋臣
 	if player:getRole() == "careerist" then return false end
 	local is = false
-	if player:getGeneralName() == "guojia" or player:getGeneralName() == "xunyu" or player:getGeneralName() == "chengyu" or player:getGeneralName() == "jiaxu" or player:getGeneralName() == "xunyou"  then
+	if player:getGeneralName() == "shalu_guojia" or player:getGeneralName() == "guojia" or player:getGeneralName() == "xunyu" or player:getGeneralName() == "chengyu" or player:getGeneralName() == "jiaxu" or player:getGeneralName() == "xunyou"  then
 		is = true
 	end
 	if not is and player:getGeneralName() ~= "yujin" and player:getGeneralName() ~= "yuejin" and player:getGeneralName() ~= "xuhuang" and player:getGeneralName() ~= "zhangliao" and player:getGeneralName() ~= "zhanghe" then
-		if player:getGeneral2Name() == "guojia" or player:getGeneral2Name() == "xunyu" or player:getGeneral2Name() == "chengyu" or player:getGeneral2Name() == "jiaxu" or player:getGeneral2Name() == "xunyou"  then
+		if player:getGeneral2Name() == "shalu_guojia" or player:getGeneral2Name() == "guojia" or player:getGeneral2Name() == "xunyu" or player:getGeneral2Name() == "chengyu" or player:getGeneral2Name() == "jiaxu" or player:getGeneral2Name() == "xunyou"  then
 			is = true
 		end
 	end
@@ -96,9 +96,9 @@ local getMouchenNum = function(room) --获得五谋臣的个数
 	local num = 0
 	for _, player in sgs.qlist(room:getAlivePlayers()) do
 		if player:getRole() ~= "careerist" then
-			if player:getGeneralName() == "guojia" or player:getGeneralName() == "xunyu" or player:getGeneralName() == "chengyu" or player:getGeneralName() == "jiaxu" or player:getGeneralName() == "xunyou" then
+			if player:getGeneralName() == "shalu_guojia" or player:getGeneralName() == "guojia" or player:getGeneralName() == "xunyu" or player:getGeneralName() == "chengyu" or player:getGeneralName() == "jiaxu" or player:getGeneralName() == "xunyou" then
 				num = num + 1
-			elseif player:getGeneral2Name() == "guojia" or player:getGeneral2Name() == "xunyu" or player:getGeneral2Name() == "chengyu" or player:getGeneral2Name() == "jiaxu" or player:getGeneral2Name() == "xunyou" then
+			elseif player:getGeneral2Name() == "shalu_guojia" or player:getGeneral2Name() == "guojia" or player:getGeneral2Name() == "xunyu" or player:getGeneral2Name() == "chengyu" or player:getGeneral2Name() == "jiaxu" or player:getGeneral2Name() == "xunyou" then
 				num = num + 1
 			end
 		end
@@ -5797,7 +5797,7 @@ danqi = sgs.CreateTriggerSkill{
 Ekuanggu = sgs.CreateTriggerSkill{
 	name = "Ekuanggu",
 	frequency = sgs.Skill_NotFrequent,
-	events = {sgs.Damage, sgs.PreDamageDone},
+	events = {sgs.Damage, sgs.PreDamageDone, sgs.DamageDone},
 	can_trigger = function(self, event, room, player, data)	
 		local damage = data:toDamage()
 		if (event == sgs.PreDamageDone) and damage.from and damage.from:hasSkill(self:objectName()) and damage.from:isAlive() then
@@ -5806,14 +5806,16 @@ Ekuanggu = sgs.CreateTriggerSkill{
 			return ""
 		elseif (event == sgs.Damage) and player:hasSkill(self:objectName()) and player:isAlive() then
 			local invoke = player:getTag("invokeLuaKuanggu"):toBool()
-			player:setTag("invokeLuaKuanggu", sgs.QVariant(false))
 			if invoke then
 				local trigger_list = {}
 				for i = 1, damage.damage, 1 do
+					sendMsg(room,"kuanggu")
 					table.insert(trigger_list, self:objectName())
 				end
 				return table.concat(trigger_list, ",")
-			end	
+			end
+		elseif event == sgs.DamageDone then
+			player:setTag("invokeLuaKuanggu", sgs.QVariant(false))
 		end
 	end,
 	on_cost = function(self, event, room, player, data)
@@ -6720,7 +6722,7 @@ sgs.LoadTranslationTable{
 	["~litong"] = "战死沙场，快哉",
 	["#litong"] = "万亿吾独往",
 	["tuifeng"] = "推锋",
-	[":tuifeng"] = "当你受到1点伤害后，你可以将一张牌置于武将牌上，称为“锋”；准备阶段开始时，若你的武将牌上有“锋”，你移去所有“锋”，摸2X张牌，若如此做，你于此回合的出牌阶段内可以多使用X张【杀】（X为你此次移去的“锋”数）。<br /><font color=\"pink\">注：疯狂杀戮模式下，技能发动时机调整为“受到伤害后”。</font>",
+	[":tuifeng"] = "当你受到1点伤害后，你可以将一张牌置于武将牌上，称为“锋”；准备阶段开始时，若你的武将牌上有“锋”，你移去所有“锋”，摸2X张牌，若如此做，你于此回合的出牌阶段内可以多使用X张【杀】（X为你此次移去的“锋”数）。",
 	["$tuifeng1"] = "摧锋陷阵，以杀贼首。",
 	["$tuifeng2"] = "敌锋之锐，我已尽知。",
 	["liru"] = "李儒",
@@ -6980,7 +6982,7 @@ sgs.LoadTranslationTable{
 	["$chengxiang1"] = "依我看，小事一桩。",
 	["$chengxiang2"] = "孰重孰轻，一称便知。",
 	["renxin"] = "仁心",
-	[":renxin"] = "当其他角色受到伤害时，若其体力值为1，你可以弃置一张装备牌，叠置，然后防止此伤害。<br /><font color=\"pink\">注：疯狂杀戮模式下，发动条件调整为“若其体力值不大于150”。</font>",
+	[":renxin"] = "当其他角色受到伤害时，若其体力值为1，你可以弃置一张装备牌，叠置，然后防止此伤害。",
 	["$renxin1"] = "仁者爱人，人恒爱之。",
 	["$renxin2"] = "有我在，别怕。",
 	["xiahoushi"] = "夏侯氏",
@@ -7079,6 +7081,7 @@ sgs.LoadTranslationTable{
 	["$weishe2"] = "不施严法怎治乱民？休得啰嗦！", 
 	--测试专用--
 	["gaoda"] = "高达",
+	["#gaoda"] = "做测试啦",
 	["zhenhan"] = "震撼",
 	[":zhenhan"] = "当你受到伤害后，你可以执行一个额外的出牌阶段。",
 -----msg-----

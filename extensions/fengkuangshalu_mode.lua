@@ -1,5 +1,12 @@
-local ban_list = {"zhonghui", "guojia", "xunyu", "lidian", "simalang", "dianwei", "chenqun", "xizhicai", "caopi", "zhangchunhua", "xiahoushi", "pangtong", "liaohua", "menghuo", "mizhu", "huangzhong", "ganfuren", "xiaoqiao", "sunjian", "sunce", "zumao", "huanggai", "zhoutai", "jiaxu", "tianfeng", "yuji", "zhangren", "zhangxiu", "liubiao", "hejin", "dongzhuo", "huangquan_shu", "huangquan_wei"}
-local hash, multy_kingdom = init(extra_general_init(), ban_list)
+local ban_list = {"zhonghui", "guojia", "xunyu", "lidian", "simalang", "dianwei", "chenqun", "xizhicai", "caopi", "zhangchunhua", "xiahoushi", "pangtong", "liaohua", "menghuo", "mizhu", "weiyan", "huangzhong", "ganfuren", "xiaoqiao", "sunjian", "sunce", "zumao", "huanggai", "zhoutai", "jiaxu", "tianfeng", "yuji", "zhangren", "zhangxiu", "liubiao", "hejin", "dongzhuo", "huangquan_shu", "huangquan_wei"}
+local extra_list = extra_general_init()
+table.insert(ban_list, "caochong")
+table.insert(extra_list, "shalu_caochong")
+table.insert(ban_list, "litong")
+table.insert(extra_list, "shalu_litong")
+table.insert(extra_list, "shalu_guojia")
+table.insert(extra_list, "shalu_weiyan")
+local hash, multy_kingdom = init(extra_list, ban_list)
 game_use_value, defult_value = initValue()
 shalu = sgs.CreateTriggerSkill{
 	name = "shalu",

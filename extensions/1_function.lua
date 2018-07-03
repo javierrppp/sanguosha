@@ -357,6 +357,11 @@ function initValue(extra_list, ban_list)
 	game_use_value["sufei_qun"] = { 425, 141, 64, 60, 100 }
 	game_use_value["tangzi_wu"] = { 437, 110, 54, 69, 100 }
 	game_use_value["tangzi_wei"] = { 437, 110, 54, 69, 100 }
+	
+	
+	game_use_value["shalu_caochong"] = { 479, 137, 65, 57, 100 }
+	game_use_value["shalu_litong"] = { 467, 147, 71, 55, 100 }
+	game_use_value["shalu_guojia"] = { 350, 105, 71, 95, 80 }
 	local defult_value = { 400, 100, 60, 60, 100 }
 	return game_use_value,defult_value
 end

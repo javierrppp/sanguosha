@@ -125,3 +125,7 @@ sufei_wu								7
 sufei_qun								6
 huangquan_shu							8
 huangquan_wei							8
+shalu_caochong							7
+shalu_guojia							8
+shalu_weiyan							6
+shalu_litong							7
