@@ -22,7 +22,7 @@ function extra_general_init()
 	local extra_list = {}
 	for _,general in pairs(sgs.Sanguosha:getGeneralNames()) do
 		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun")
-			or general == "machao" then
+			or general == "machao" or general == "jiangwei" then
 			table.insert(extra_list, general)
 		end
 	end
@@ -88,7 +88,7 @@ function init(extra_list, ban_list)
 				table.insert(name, general)
 				multy_kingdom[generalRealName] = name
 			end
-		elseif general == "machao" then
+		elseif general == "machao" or general == "jiangwei" then
 			if multy_kingdom[general] then
 				table.insert(multy_kingdom[general],general)
 			else
@@ -150,7 +150,7 @@ function initByKingdom(extra_list, ban_list)
 				table.insert(name, general)
 				multy_kingdom[generalRealName] = name
 			end
-		elseif general == "machao" then
+		elseif general == "machao" or general == "jiangwei" then
 			if multy_kingdom[general] then
 				table.insert(multy_kingdom[general],general)
 			else
@@ -357,6 +357,7 @@ function initValue(extra_list, ban_list)
 	game_use_value["sufei_qun"] = { 425, 141, 64, 60, 100 }
 	game_use_value["tangzi_wu"] = { 437, 110, 54, 69, 100 }
 	game_use_value["tangzi_wei"] = { 437, 110, 54, 69, 100 }
+	game_use_value["jiangwei_wei"] = { 408, 174, 74, 88, 100 }
 	
 	
 	game_use_value["shalu_caochong"] = { 479, 137, 65, 57, 100 }

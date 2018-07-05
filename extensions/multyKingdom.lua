@@ -9,6 +9,8 @@ sufei_wu = sgs.General(extension_multy, "sufei_wu", "wu", 4, true, true, false)
 tangzi_wei = sgs.General(extension_multy, "tangzi_wei", "wei", 4, true, true, false)
 tangzi_wu = sgs.General(extension_multy, "tangzi_wu", "wu", 4, true, true, false)
 machao_qun = sgs.General(extension_multy, "machao_qun", "qun", 4, true, true, false)
+jiangwei_wei = sgs.General(extension_multy, "jiangwei_wei", "wei", 3, true, true, false)
+
 
 -----刘琦-----
 
@@ -633,6 +635,148 @@ machao_qun:addSkill(shichou)
 machao_qun:addSkill("mashu_machao")
 machao_qun:addCompanion("mateng")
 
+-----姜维*魏-----
+
+zhanxing = sgs.CreateTriggerSkill{
+	name = "zhanxing",
+	frequency = sgs.Skill_Compulsory,
+	relate_to_place = "head",
+	events = {sgs.BeforeCardsMove},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		local move = data:toMoveOneTime()
+		if not move.to or player:objectName() ~= move.to:objectName() then return "" end
+		if not move.from_places:contains(sgs.Player_PlaceHand) and not move.from_places:contains(sgs.Player_PlaceEquip) and (move.to_place == sgs.Player_PlaceHand) then
+			return self:objectName()
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if not player:hasShownSkill(self:objectName()) and room:askForSkillInvoke(player,self:objectName(),data) then
+			return true
+		end
+		if player:hasShownSkill(self:objectName()) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		room:notifySkillInvoked(player, self:objectName())
+		local move = data:toMoveOneTime()
+		local notify_visible_list = sgs.IntList()
+		notify_visible_list:append(-1)
+		local num = move.card_ids:length()
+		local card_ids = room:getNCards(num, true)
+		for _,id in sgs.qlist(move.card_ids) do
+			card_ids:append(id)
+		end
+		local result = room:askForMoveCards(player, card_ids, sgs.IntList(), true, "zhanxing", "", self:objectName(), num, num, false, false, notify_visible_list)
+		local move_card_ids = sgs.IntList()
+		for _, id in sgs.qlist(result.bottom) do
+			move_card_ids:prepend(id) 
+		end
+		if move_card_ids:length() > 0 then
+			move.card_ids = move_card_ids
+			data:setValue(move)
+		end
+		local dummy = sgs.DummyCard()
+		if not result.top:isEmpty() then
+			dummy:addSubcards(result.top)
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), nil)
+			room:throwCard(dummy, reason, nil)
+		end
+		dummy:deleteLater()
+	end
+}
+kunfen = sgs.CreateTriggerSkill{
+	name = "kunfen",
+	frequency = sgs.Skill_Frequent,
+	relate_to_place = "deputy",
+	events = {sgs.BeforeCardsMove, sgs.CardsMoveOneTime},
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
+		if player:objectName() ~= room:getCurrent():objectName() then return "" end
+		local move = data:toMoveOneTime()
+		if not move.from then return "" end
+		if move.from and move.from:objectName() ~= player:objectName() then return "" end
+		if event == sgs.BeforeCardsMove then
+			room:setPlayerMark(player,"kunfenMark",0)
+			local reason = move.reason.m_reason
+			local reasonx = bit32.band(reason, sgs.CardMoveReason_S_MASK_BASIC_REASON)
+			local Yes = reasonx == sgs.CardMoveReason_S_REASON_DISCARD
+			if Yes then
+				local card
+				local i = 0
+				for _,id in sgs.qlist(move.card_ids) do
+					card = sgs.Sanguosha:getCard(id)
+					if move.from_places:at(i) == sgs.Player_PlaceHand or move.from_places:at(i) == sgs.Player_PlaceEquip then
+						if card and room:getCardOwner(id):getSeat() == player:getSeat() then
+							i = i + 1
+						end
+					end
+				end
+				room:setPlayerMark(player,"kunfenMark",i)
+				return ""
+			end
+		else
+			if player:getMark("kunfenMark") > 0 then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(ask_who,self:objectName(),data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		local num = player:getMark("kunfenMark")
+		if num > 3 then num = 3 end
+		player:drawCards(num)
+		return false
+	end
+}
+MtiaoxinCard = sgs.CreateSkillCard{
+	name = "MtiaoxinCard" ,
+	skill_name = "Mtiaoxin",
+	mute = true,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:inMyAttackRange(sgs.Self) and to_select:objectName() ~= sgs.Self:objectName()
+	end ,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_effect = function(self, effect)
+		local room = effect.from:getRoom()
+		room:broadcastSkillInvoke("Mtiaoxin")
+		local use_slash = false
+		if effect.to:canSlash(effect.from, nil, false) then
+			use_slash = room:askForUseSlashTo(effect.to,effect.from, "@tiaoxin-slash:" .. effect.from:objectName())
+		end
+		if (not use_slash) and effect.from:canDiscard(effect.to, "he") then
+			room:throwCard(room:askForCardChosen(effect.from,effect.to, "he", "Mtiaoxin", false, sgs.Card_MethodDiscard), effect.to, effect.from)
+		end
+	end
+}
+Mtiaoxin = sgs.CreateZeroCardViewAsSkill{
+	name = "Mtiaoxin",
+	n = 0 ,
+	view_as = function()
+		return MtiaoxinCard:clone()
+	end ,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#MtiaoxinCard")
+	end
+}
+jiangwei_wei:addSkill(kunfen)
+jiangwei_wei:addSkill(zhanxing)
+jiangwei_wei:addSkill(Mtiaoxin)
+jiangwei_wei:addCompanion("zhonghui")
+
 sgs.LoadTranslationTable{
 	["extension_multy"] = "多势力武将包",
 	["liuqi_shu"] = "刘琦",
@@ -707,5 +851,25 @@ sgs.LoadTranslationTable{
 	["$shichou1"] = "灭族之恨，不共戴天！",
 	["$shichou2"] = "休想跑！",
 	["shichou-invoke"] = "你可以额外选择%arg名角色",
+	
+	["jiangwei_wei"] = "姜维",
+	["#jiangwei_wei"] = "幼麟",
+	["~jiangwei_wei"] = "伯约已尽力而为，奈何大汉国运衰微。",
+	["Mtiaoxin"] = "挑衅",
+	[":Mtiaoxin"] = "出牌阶段限一次，你可以令攻击范围内含有你的一名角色选择是否对你使用【杀】，若其选择否，你弃置其一张牌。",
+	["$Mtiaoxin1"] = "今日天公作美，怎能不战而退？",
+	["$Mtiaoxin2"] = "贼将无胆，何不早降？",
+	["kunfen"] = "困奋",
+	[":kunfen"] = "副将技，你的回合内，当你的牌因弃置而进入弃牌堆时，你可以摸等量的牌（最多3张）。",
+	["$kunfen1"] = "纵使困顿难行，亦当砥砺奋进！",
+	["$kunfen2"] = "心数虚实，众将切勿惫怠！",
+	["zhanxing"] = "占星",
+	[":zhanxing"] = "主将技，锁定技，当你将要从牌堆获得牌时，你观看这些牌与牌堆顶等量的牌，你选择获得其中x张牌，其余牌弃置（x为你将要获得的牌数）。",
+	["$zhanxing1"] = "得遇丞相，再生之德！",
+	["$zhanxing2"] = "丞相大义，维岂有不从之理！",
+	["tiaoxin-slash"] = "请对 %src 使用一张【杀】，否则其弃置你一张牌",
+	["@zhanxing"] = "获得其中一半的牌",
+	["zhanxing#up"] = "弃置",
+	["zhanxing#down"] = "获取",
 }
 return {extension_multy}

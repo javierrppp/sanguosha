@@ -5348,3 +5348,113 @@ sgs.ai_skill_use["@@zhinang"]=function(self,prompt)
 	end
 	return "."
 end
+
+-----姜维*魏-----
+
+sgs.ai_skill_invoke.zhanxing = function(self, data)
+	return true
+end
+sgs.ai_skill_invoke.kunfen = function(self, data)
+	return true
+end
+function SmartAI:isMtiaoxinTarget(enemy)
+	if not enemy then self.room:writeToConsole(debug.traceback()) return end
+	if getCardsNum("Slash", enemy, self.player) < 1 and self.player:getHp() > 1 and not self:canHit(self.player, enemy)
+		and not (enemy:hasWeapon("DoubleSword") and self.player:getGender() ~= enemy:getGender())
+		then return true end
+	if sgs.card_lack[enemy:objectName()]["Slash"] == 1
+		or self:needLeiji(self.player, enemy)
+		or self:getDamagedEffects(self.player, enemy, true)
+		or self:needToLoseHp(self.player, enemy, true, true)
+		then return true end
+	if self.player:hasSkill("xiangle") and (enemy:getHandcardNum() < 2 or getKnownCard(enemy, self.player, "BasicCard") < 2
+												and enemy:getHandcardNum() - getKnownNum(enemy, self.player) < 2) then return true end
+	return false
+end
+Mtiaoxin_skill = {}
+Mtiaoxin_skill.name = "Mtiaoxin"
+table.insert(sgs.ai_skills, Mtiaoxin_skill)
+Mtiaoxin_skill.getTurnUseCard = function(self,inclusive)
+	if not self.player:hasUsed("#MtiaoxinCard") then
+		return sgs.Card_Parse("#MtiaoxinCard:.:&Mtiaoxin")
+	end
+end
+
+--[[sgs.ai_skill_use_func["#MtiaoxinCard"] = function(card, use, self)
+	local room = self.room
+	local source = self.player
+	local use_or_not = false
+	local friends_hands = 999
+	local target_friend
+	self:log("11")
+	for _, p in pairs(self.friends) do
+		local x = p:getHandcardNum()
+		if x < friends_hands then
+			friends_hands = x
+			target_friend = p
+		end
+	end
+	local targets = sgs.SPlayerList()
+	targets:append(target_friend)
+	if targets:length() == 1 then
+		use.card = card
+		if use.to then self:log("2") use.to = targets end
+	end
+end--]]
+sgs.ai_skill_use_func["#MtiaoxinCard"] = function(card, use, self)
+	local distance = use.defHorse and 1 or 0
+	local targets = {}
+	for _, enemy in ipairs(self.enemies) do
+		if enemy:distanceTo(self.player, distance) <= enemy:getAttackRange() and not self:doNotDiscard(enemy) and self:isMtiaoxinTarget(enemy) then
+			table.insert(targets, enemy)
+		end
+	end
+	if #targets == 0 then return end
+
+	sgs.ai_use_priority.MtiaoxinCard = 8
+	
+	if not self.player:getArmor() and not self.player:isKongcheng() then
+		for _, card in sgs.qlist(self.player:getCards("h")) do
+			if card:isKindOf("Armor") and self:evaluateArmor(card) > 3 then
+				sgs.ai_use_priority.MtiaoxinCard = 5.9
+				break
+			end
+		end
+	end
+	self:sort(targets, "defenseSlash")
+	local targets_list = sgs.SPlayerList()
+	targets_list:append(targets[1])
+	if targets_list:length() == 1 then
+		use.card = card
+		use.to = targets_list
+		--if use.to then self:log("777") use.to = targets_list end
+	end
+end
+
+sgs.ai_skill_cardask["@tiaoxin-slash"] = function(self, data, pattern, target)
+	if target then
+		local cards = self:getCards("Slash")
+		self:sortByUseValue(cards)
+		for _, slash in ipairs(cards) do
+			if self:isFriend(target) and self:slashIsEffective(slash, target) then
+				if self:needLeiji(target, self.player) then return slash:toString() end
+				if self:getDamagedEffects(target, self.player) then return slash:toString() end
+				if self:needToLoseHp(target, self.player, nil, true) then return slash:toString() end
+			end
+			if not self:isFriend(target) and self:slashIsEffective(slash, target)
+				and not self:getDamagedEffects(target, self.player, true) and not self:needLeiji(target, self.player) then
+					return slash:toString()
+			end
+		end
+		for _, slash in ipairs(cards) do
+			if not self:isFriend(target) then
+				if not self:needLeiji(target, self.player) and not self:getDamagedEffects(target, self.player, true) then return slash:toString() end
+				if not self:slashIsEffective(slash, target) then return slash:toString() end
+			end
+		end
+	end
+	return "."
+end
+
+sgs.ai_card_intention.MtiaoxinCard = 80
+sgs.ai_use_priority.MtiaoxinCard = 4

@@ -1700,7 +1700,7 @@ zishu = sgs.CreateTriggerSkill{
 				local move1 = sgs.CardsMoveStruct(move_card_ids_copy, player, to, sgs.Player_PlaceTable, sgs.Player_PlaceHand, reason)
 				room:moveCardsAtomic(move1)
 				data:setValue(move)
-			end
+			end 
 		end
 		return false
 	end
