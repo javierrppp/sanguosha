@@ -4253,7 +4253,7 @@ function SmartAI:hasrenxinEffect_(damageStruct, needFaceDown, simulateDamage)
 		if card and card:isKindOf("Slash") then
 			if from:hasFlag("luoyi") then damage = damage + 1 end
 			if from:getMark("@LuoyiLB") > 0 then damage = damage + from:getMark("@LuoyiLB") end
-			if from:hasShownSkill("Anjian") and not to:inMyAttackRange(from) then damage = damage + 1 end
+			if from:hasShownSkill("anjian") and not to:inMyAttackRange(from) then damage = damage + 1 end
 			if from:hasWeapon("GudingBlade") and slash and to:isKongcheng() then damage = damage + 1 end
 		elseif card and card:isKindOf("Duel") then
 			if from:hasFlag("luoyi") then damage = damage + 1 end
@@ -4620,6 +4620,143 @@ sgs.ai_skill_use["@@quji"] = function(self, prompt)
 	end
 	return "."
 end
+
+-----潘璋马忠-----
+
+sgs.ai_skill_cardask["@duodao-get"] = function(self, data)
+	if not self:willShowForAttack() and not self:willShowForDefence() then return "." end
+	local function getLeastValueCard(from)
+		if self:needToThrowArmor() then return "$" .. self.player:getArmor():getEffectiveId() end
+		local cards = sgs.QList2Table(self.player:getHandcards())
+		self:sortByKeepValue(cards)
+		for _, c in ipairs(cards) do
+			if self:getKeepValue(c) < 8 and not self.player:isJilei(c) and not self:isValuableCard(c) then return "$" .. c:getEffectiveId() end
+		end
+		local offhorse_avail, weapon_avail
+		for _, enemy in ipairs(self.enemies) do
+			if self:canAttack(enemy, self.player) then
+				if not offhorse_avail and self.player:getOffensiveHorse() and self.player:distanceTo(enemy, 1) <= self.player:getAttackRange() then
+					offhorse_avail = true
+				end
+				if not weapon_avail and self.player:getWeapon() and self.player:distanceTo(enemy) == 1 then
+					weapon_avail = true
+				end
+			end
+			if offhorse_avail and weapon_avail then break end
+		end
+		if offhorse_avail and not self.player:isJilei(self.player:getOffensiveHorse()) then return "$" .. self.player:getOffensiveHorse():getEffectiveId() end
+		if weapon_avail and not self.player:isJilei(self.player:getWeapon()) and self:evaluateWeapon(self.player:getWeapon()) < self:evaluateWeapon(from:getWeapon()) then
+			return "$" .. self.player:getWeapon():getEffectiveId()
+		end
+	end
+	local damage = data:toDamage()
+	if not damage.from or not damage.from:getWeapon() then
+		if self:needToThrowArmor() then
+			return "$" .. self.player:getArmor():getEffectiveId()
+		elseif self.player:getHandcardNum() == 1 and self:needKongcheng() --[[(self.player:hasSkill("kongcheng") or (self.player:hasSkill("zhiji") and self.player:getMark("zhiji") == 0))]] then
+			return "$" .. self.player:handCards():first()
+		end
+	else
+		if self:isFriend(damage.from) then
+			if damage.from:hasSkills("xiaoji") and self:isWeak(damage.from) then
+				local str = getLeastValueCard(damage.from)
+				if str then return str end
+			else
+				if self:getCardsNum("Slash") == 0 or self:willSkipPlayPhase() then return "." end
+				local invoke = false
+				local range = sgs.weapon_range[damage.from:getWeapon():getClassName()] or 0
+				if self.player:hasSkill("anjian") then
+					for _, enemy in ipairs(self.enemies) do
+						if not enemy:inMyAttackRange(self.player) and not self.player:inMyAttackRange(enemy) and self.player:distanceTo(enemy) <= range then
+							invoke = true
+							break
+						end
+					end
+				end
+				if not invoke and self:evaluateWeapon(damage.from:getWeapon()) > 8 then invoke = true end
+				if invoke then
+					local str = getLeastValueCard(damage.from)
+					if str then return str end
+				end
+			end
+		else
+			--[[if damage.from:hasSkill("nosxuanfeng") then
+				for _, friend in ipairs(self.friends) do
+					if self:isWeak(friend) then return "." end
+				end
+			else]]
+				--[[if hasManjuanEffect(self.player) then
+					if self:needToThrowArmor() and not self.player:isJilei(self.player:getArmor()) then
+						return "$" .. self.player:getArmor():getEffectiveId()
+					elseif self.player:getHandcardNum() == 1
+							and (self.player:hasSkill("kongcheng") or (self.player:hasSkill("zhiji") and self.player:getMark("zhiji") == 0))
+							and not self.player:isJilei(self.player:getHandcards():first()) then
+						return "$" .. self.player:handCards():first()
+					end
+				else]]
+					local str = getLeastValueCard(damage.from)
+					if str then return str end
+				--end
+			--end
+		end
+	end
+	return "."
+end
+sgs.ai_skill_invoke.anjian = function(self, data)
+	if not self:willShowForAttack() then return false end
+	local enemy = data:toPlayer()
+	if self:isFriend(enemy) then return false end
+	local damage = self.player:getTag("anjianDamage"):toDamage()
+	local damage_copy = damage
+	damage_copy.damage = damage_copy.damage + 1
+	if self:objectiveLevel(enemy) > 3 and self:damageIsEffective_(damage_copy)
+		and (not enemy:hasArmorEffect("SilverLion") or self.player:hasWeapon("QinggangSword")) then
+		return true
+	end
+	return false
+end
+function sgs.ai_cardneed.anjian(to, card, self)  --抄裸衣
+	local slash_num = 0
+	local target
+	local slash = sgs.cloneCard("slash")
+
+	local cards = to:getHandcards()
+	local need_slash = true
+	for _, c in sgs.qlist(cards) do
+		if sgs.cardIsVisible(c, to, self.player) then
+			if isCard("Slash", c, to) then
+				need_slash = false
+				break
+			end
+		end
+	end
+
+	self:sort(self.enemies, "defenseSlash")
+	for _, enemy in ipairs(self.enemies) do
+		if to:canSlash(enemy) and not self:slashProhibit(slash ,enemy) and self:slashIsEffective(slash, enemy) and sgs.getDefenseSlash(enemy, self) <= 2 then
+			target = enemy
+			break
+		end
+	end
+
+	if need_slash and target and isCard("Slash", card, to) then return true end
+end
+sgs.anjian_keep_value = {
+	DefensiveHorse  = 6,
+	FireSlash       = 5.6,
+	Slash           = 5.4,
+	ThunderSlash    = 5.5,
+	Axe             = 5,
+	Triblade        = 4.9,
+	Blade           = 4.9,
+	Spear           = 4.9,
+	Fan             = 4.8,
+	KylinBow        = 4.7,
+	Halberd         = 4.6,
+	MoonSpear       = 4.5,
+	SPMoonSpear     = 4.5,
+	OffensiveHorse  = 4
+}
 
 -----刘琦-----
 

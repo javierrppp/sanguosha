@@ -270,10 +270,8 @@ function initValue(extra_list, ban_list)
 	game_use_value["xiahouyuan"] = { 446, 177, 62, 50, 100 }
 	game_use_value["zhanghe"] = { 420, 150, 58, 69, 100 }
 	game_use_value["xuhuang"] = { 430, 134, 61, 69, 100 }
-	game_use_value["caoren"] = { 530, 100, 96, 63, 120 }
 	game_use_value["yuejin"] = { 410, 133, 62, 69, 100 }
 	game_use_value["liubei"] = { 421, 102, 77, 77, 100 }
-	game_use_value["guanyu"] = { 530, 200, 62, 50, 100 }
 	game_use_value["zhangfei"] = { 500, 178, 69, 36, 100 }
 	game_use_value["zhugeliang"] = { 331, 116, 48, 95, 100 }
 	game_use_value["zhaoyun"] = { 441, 198, 74, 60, 100 }
@@ -307,9 +305,7 @@ function initValue(extra_list, ban_list)
 	game_use_value["jiling"] = { 477, 177, 77, 55, 100 }
 	game_use_value["panfeng"] = { 411, 155, 55, 55, 150 }
 	game_use_value["zoushi"] = { 322, 71, 38, 70, 150 }
-	game_use_value["dengai"] = { 401, 161, 75, 72, 100 }
 	game_use_value["caohong"] = { 305, 85, 44, 90, 80 }
-	game_use_value["jiangwei"] = { 408, 174, 74, 88, 100 }
 	game_use_value["jiangwanfeiyi"] = { 333, 110, 48, 79, 100 }
 	game_use_value["jiangqin"] = { 447, 151, 70, 65, 100 }
 	game_use_value["xusheng"] = { 510, 141, 70, 62, 100 }
@@ -325,7 +321,6 @@ function initValue(extra_list, ban_list)
 	game_use_value["liaohua"] = { 640, 123, 61, 52, 100 }
 	game_use_value["bulianshi"] = { 315, 61, 33, 70, 150 }
 	game_use_value["jianyong"] = { 360, 88, 56, 82, 100 }
-	game_use_value["xushu"] = { 351, 67, 61, 85, 100 }
 	game_use_value["liuxie"] = { 355, 55, 55, 80, 100 }
 	game_use_value["buzhi"] = { 334, 100, 52, 82, 100 }
 	game_use_value["litong"] = { 467, 147, 71, 55, 100 }
@@ -358,11 +353,30 @@ function initValue(extra_list, ban_list)
 	game_use_value["tangzi_wu"] = { 437, 110, 54, 69, 100 }
 	game_use_value["tangzi_wei"] = { 437, 110, 54, 69, 100 }
 	game_use_value["jiangwei_wei"] = { 408, 174, 74, 88, 100 }
-	
+	game_use_value["panzhangmazhong"] = { 488, 174, 66, 55, 100 }
 	
 	game_use_value["shalu_caochong"] = { 479, 137, 65, 57, 100 }
 	game_use_value["shalu_litong"] = { 467, 147, 71, 55, 100 }
 	game_use_value["shalu_guojia"] = { 350, 105, 71, 95, 80 }
+	
+	local head_value = table.copyFromDic(game_use_value)
+	local deputy_value = table.copyFromDic(game_use_value)
+	
+	head_value["dengai"] = {336, 156, 61, 78, 100}
+	deputy_value["dengai"] = {498, 171, 66, 75, 100}
+	
+	head_value["jiangwei"] = {476, 183, 72, 88, 100}
+	deputy_value["jiangwei"] = {336, 156, 61, 88, 100}
+	
+	head_value["xushu"] = {450, 123, 68, 85, 100}
+	deputy_value["xushu"] = {351, 80, 61, 85, 100}
+	
+	head_value["guanyu"] = {530, 200, 62, 50, 100}
+	deputy_value["guanyu"] = {400, 200, 62, 50, 100}
+	
+	head_value["caoren"] = {530, 100, 96, 63, 100}
+	deputy_value["caoren"] = {420, 100, 98, 63, 100}
+	
 	local defult_value = { 400, 100, 60, 60, 100 }
-	return game_use_value,defult_value
+	return head_value, deputy_value, defult_value
 end

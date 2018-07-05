@@ -198,7 +198,7 @@ function setInitialTables()
 	sgs.lose_one_equip_skill = ""
 	sgs.need_kongcheng = "kongcheng"
 	sgs.masochism_skill =       "yiji|fankui|jieming|ganglie|fangzhu|hengjiang|qianhuan"
-	sgs.wizard_skill =      "guicai|guidao|tiandu|tiandu_xizhicai"
+	sgs.wizard_skill =      "guicai|guidao|tiandu|tiandu_xizhicai|shaluTiandu"
 	sgs.wizard_harm_skill =     "guicai|guidao"
 	sgs.priority_skill =        "dimeng|haoshi|qingnang|jizhi|guzheng|qixi|jieyin|guose|duanliang|fanjian|lijian|tuxi|qiaobian|zhiheng|luoshen|rende|wansha|qingcheng|shuangren"
 	sgs.save_skill =        "jijiu"
@@ -2412,7 +2412,7 @@ function SmartAI:askForNullification(trick, from, to, positive)
 			if self:isFriend(to) and not to:isSkipped(sgs.Player_Draw) then
 				if (to:hasShownSkill("guanxing") or to:hasShownSkill("yizhi") and to:inDeputySkills("yizhi"))
 					and (global_room:alivePlayerCount() > 4 or to:hasShownSkill("yizhi")) then return end
-				if to:hasShownSkills("guidao|tiandu|tiandu_xizhicai") then return nil end
+				if to:hasShownSkills("guidao|tiandu|tiandu_xizhicai|shaluTiandu") then return nil end
 				if to:hasShownSkill("qiaobian") and not to:isKongcheng() then return nil end
 				if (to:containsTrick("indulgence") or self:willSkipPlayPhase(to)) and null_num <= 1 and self:getOverflow(to) > 1 then return nil end
 				return null_card
@@ -3599,7 +3599,7 @@ function SmartAI:needRetrial(judge)
 		end
 	elseif reason == "supply_shortage" then
 		if self:isFriend(who) then
-			if who:hasShownSkills("guidao|tiandu|tiandu_xizhicai") then return false end
+			if who:hasShownSkills("guidao|tiandu|tiandu_xizhicai|shaluTiandu") then return false end
 			return not judge:isGood()
 		else
 			return judge:isGood()

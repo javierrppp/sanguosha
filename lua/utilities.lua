@@ -180,6 +180,14 @@ function table.copyFrom(list)
 	return l
 end
 
+function table.copyFromDic(list)
+	local l = {}
+	for key,value in pairs(list) do
+		l[key] = value
+	end
+	return l
+end
+
 function table.Shuffle(list)
 	local result = {}
 	local list_copy = table.copyFrom(list)

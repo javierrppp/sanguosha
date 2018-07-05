@@ -43,6 +43,7 @@ chengong = sgs.General(extension, "chengong", "qun","3", false)
 caochong = sgs.General(extension, "caochong", "wei","3")
 xiahoushi = sgs.General(extension, "xiahoushi", "shu","3", false)
 simalang = sgs.General(extension, "simalang", "wei" ,"3")
+panzhangmazhong = sgs.General(extension, "panzhangmazhong", "wu", "4")
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -122,6 +123,77 @@ end
 --===========================================技能区============================================--
 
 --**********智包**********-----
+
+-----潘璋马忠-----
+
+duodao = sgs.CreateTriggerSkill{
+	name = "duodao",
+	can_preshow = true,
+	events = {sgs.Damaged},
+	can_trigger = function(self, event, room, player, data)	
+		local damage = data:toDamage()
+		if player and player:isAlive() and player:hasSkill(self:objectName()) and player:canDiscard(player, "he") then
+			if damage.card and damage.card:isKindOf("Slash") then
+				return self:objectName() .. "->" .. damage.from:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if room:askForCard(ask_who, "..", "@duodao-get", data, self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName(), ask_who)
+			return true
+		end
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		if ask_who:isAlive() and player:isAlive() and player:getWeapon() then
+			room:obtainCard(ask_who, player:getWeapon(), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, ask_who:objectName(), player:objectName(), self:objectName(), ""))
+		end
+		return false
+	end
+}
+anjian = sgs.CreateTriggerSkill{
+	name = "anjian",
+	events = {sgs.DamageCaused},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(self, event, room, player, data)
+		if player and player:isAlive() and player:hasSkill(self) then
+			local damage = data:toDamage()
+			if damage.to and damage.to:isAlive() and not (damage.to:inMyAttackRange(damage.from) or damage.to:objectName() == damage.from:objectName()) then 
+				if damage.card and damage.card:isKindOf("Slash") and not (damage.chain or damage.transfer or not damage.by_user) then
+					return self:objectName() .. "->" .. damage.to:objectName()
+				end
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		local d = sgs.QVariant()
+		d:setValue(player)
+		ask_who:setTag("anjianDamage", data)  --for AI
+		local invoked = ask_who:hasShownSkill(self:objectName()) or room:askForSkillInvoke(ask_who, self:objectName(), d)
+		ask_who:removeTag("anjianDamage")
+		if invoked then
+			room:broadcastSkillInvoke(self:objectName(), ask_who)
+			return true
+		end
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		room:notifySkillInvoked(ask_who, self:objectName())
+		local damage = data:toDamage()
+		local log = sgs.LogMessage()
+		log.type = "#anjianBuff"
+		log.from = ask_who
+		log.to:append(player)
+		log.arg = damage.damage
+		log.arg2 = damage.damage + 1
+		room:sendLog(log)
+		damage.damage = damage.damage + 1
+		data:setValue(damage)
+	end,
+}
+panzhangmazhong:addSkill(duodao)
+panzhangmazhong:addSkill(anjian)
 
 -----司马朗-----
 
@@ -614,16 +686,37 @@ huimin = sgs.CreateTriggerSkill{
 		end
 		local huimin_cards = exc_card:getSubcards()
 		local to = room:askForPlayerChosen(player, targets, self:objectName(), "huimin-choose", true, true)
+		if not to then to = targets:first() end
 		local move = sgs.CardsMoveStruct(exc_card:getSubcards(), nil, sgs.Player_PlaceTable, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, player:objectName(), "huimin", ""))
 		room:moveCardsAtomic(move, true)
 		local target_list = {}
+		--[[for _, p in sgs.qlist(targets) do 
+			table.insert(target_list, p)
+		end--]]
+		local begin = false
 		for _, p in sgs.qlist(targets) do 
-			table.insert(target_list, p:objectName())
+			if p:objectName() == to:objectName() then
+				begin = true
+			end
+			if begin then
+				table.insert(target_list, p)
+			end
+		end
+		for _, p in sgs.qlist(targets) do 
+			if p:objectName() == to:objectName() then break end
+			table.insert(target_list, p)
 		end
 		local current_player = to
 		room:fillAG(huimin_cards)
 		local t = sgs.SPlayerList()
-		while true do
+		for _, p in pairs(target_list) do 
+			local id = room:askForAG(p, huimin_cards, false, self:objectName())
+			room:takeAG(p, id, true)
+			table.removeOne(target_list, p:objectName())
+			huimin_cards:removeOne(id)
+			if huimin_cards:length() == 0 then break end
+		end
+		--[[while true do
 			if table.contains(target_list, current_player:objectName()) then
 				local id = room:askForAG(current_player, huimin_cards, false, self:objectName())
 				room:takeAG(current_player, id, true)
@@ -633,7 +726,7 @@ huimin = sgs.CreateTriggerSkill{
 			current_player = current_player:getNextAlive()
 			if t:contains(current_player) then break else t:append(current_player) end
 			if huimin_cards:length() == 0 then break end
-		end
+		end--]]
 		room:clearAG()
 		return false
 	end
@@ -7008,6 +7101,20 @@ sgs.LoadTranslationTable{
 	[":quji"] = "当你受到伤害后，你可以弃置x张与造成伤害的牌花色相同的牌并指定一名已受伤的其他角色（x为你的体力值），其恢复一点体力。",
 	["$quji1"] = "愿为将士，略尽绵薄。",
 	["$quji2"] = "若不去兵之疾，则将何以守国？",
+	["panzhangmazhong"] = "潘璋＆马忠",
+	["#panzhangmazhong"] = "擒龙伏虎",
+	["~panzhangmazhong"] = "怎么可能，我明明亲手将你……",
+	["&panzhangmazhong"] = "潘璋马忠",
+	["duodao"] = "夺刀",
+	[":duodao"] = "当你受到【杀】造成的伤害后，你可以弃置一张牌，获得伤害来源装备区里的武器牌。",
+	["@duodao-get"] = "你可以弃置一张牌发动“夺刀”",
+	["$duodao1"] = "这刀岂是你配用的？",
+	["$duodao2"] = "夺敌兵刃，如断其臂！",
+	["anjian"] = "暗箭",
+	[":anjian"] = "锁定技，当你使用【杀】对目标角色造成伤害时，若你不在其攻击范围内，你令此伤害+1。",
+	["#anjianBuff"] = "%from 的“<font color=\"yellow\"><b>暗箭</b></font>”效果被触发，伤害从 %arg 点增加至 %arg2 点",
+	["$anjian1"] = "击其懈怠，攻其不备！",
+	["$anjian2"] = "哼，你满身都是破绽！",
 	
 	--加强包--
 	["lizhan"] = "励战",
