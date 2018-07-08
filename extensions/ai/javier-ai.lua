@@ -3647,10 +3647,6 @@ sgs.ai_skill_playerchosen.qizhi = function(self, targets)
 	return targets:first()
 end
 sgs.ai_skill_invoke.jinqu = function(self, data)
-	local room = self.room
-    return true
-end
-sgs.ai_skill_invoke.jinqu = function(self, data)
 --jinqu_damaged
 	if data:toString() == "1" then return true end
 	local x = self.player:getMark("@qizhi")
@@ -5563,8 +5559,7 @@ sgs.ai_skill_use_func["#MtiaoxinCard"] = function(card, use, self)
 	targets_list:append(targets[1])
 	if targets_list:length() == 1 then
 		use.card = card
-		use.to = targets_list
-		--if use.to then self:log("777") use.to = targets_list end
+		if use.to then use.to = targets_list end
 	end
 end
 
@@ -5595,3 +5590,160 @@ end
 
 sgs.ai_card_intention.MtiaoxinCard = 80
 sgs.ai_use_priority.MtiaoxinCard = 4
+
+-----孙尚香*蜀-----
+
+sgs.ai_skill_invoke.shaluXiaoji = function(self, data)
+	return true
+end
+sgs.ai_skill_invoke.liangzhu = function(self, data)
+	return true
+end
+sgs.ai_skill_choice["liangzhu"] = function(self, choices, data)
+    local source = self.player
+    local room = source:getRoom()
+	local to = room:getCurrent()
+	local choice_list = choices:split("+")
+	if self:isFriend(to) then
+		return choice_list[2]
+	end
+	return choice_list[1]
+end
+fanxiang_skill = {}
+fanxiang_skill.name = "fanxiang"
+table.insert(sgs.ai_skills, fanxiang_skill)
+fanxiang_skill.getTurnUseCard = function(self,inclusive)
+	if self.player:getMark("@fanxiangMark") > 0 and self.player:isWounded() then
+		return sgs.Card_Parse("#fanxiangCard:.:&fanxiang")
+	end
+end
+sgs.ai_skill_use_func["#fanxiangCard"] = function(card, use, self)
+	local source = self.player
+	local room = self.room
+	local max_kingdom_num
+	local kingdom_num = 0
+	local best_to_choice
+	local to
+	for _, p in sgs.qlist(room:getOtherPlayers(source)) do 
+		if p:getKingdom() == source:getKingdom() and source:getRole() ~= "careerist" then
+			kingdom_num = kingdom_num + 1
+			if kingdom_num > max_kingdom_num then
+				max_kingdom_num = kingdom_num
+				best_to_choice = to 
+			end
+		else
+			to = p 
+			kingdom_num = 0
+		end
+	end
+	self:log("ss")
+	local targets_list = sgs.SPlayerList()
+	if not best_to_choice and self:isWeak(source) then
+		best_to_choice = room:getOtherPlayers(source):first()
+	self:log("aa")
+	end
+	if best_to_choice then targets_list:append(best_to_choice) end
+	if targets_list:length() == 1 then
+		use.card = card
+	self:log("dd")
+		if use.to then use.to = targets_list end
+	end
+end
+
+-----周公瑾-----
+
+sgs.ai_skill_playerchosen.sashuang = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.friends, "hp")
+	local target = nil
+	for _, p in pairs(self.friends) do
+		if not p:hasShownGeneral2() then continue end
+		local skill_list = p:getGeneral2():getSkillList(true, false)
+		if skill_list:length() == 0 then return p end
+		if skill_list:length() == 1 then
+			local skill = skill_list:first()
+			if skill:objectName() == "qixi" and not p:hasShownSkill("xiaoji") then return p end
+			if skill:objectName() == "yicheng" and not p:hasShownSkill("xiaoji") then return p end
+			if skill:objectName() == "yinghun" then return p end
+			if skill:objectName() == "tianyi" then return p end
+			if skill:objectName() == "buqu" and p:getHp() > 1 then return p end
+			if skill:objectName() == "yinbing" then return p end
+			if skill:objectName() == "keji" and #self.enemies > 2 then return p end
+		end
+		if skill_list:length() == 2 then
+			for _, skill in sgs.qlist(skill_list) do 
+				if skill:objectName() == "chouhai" or skill:objectName() == "kurou" or
+					skill:objectName() == "niaoxiang" or skill:objectName() == "duanbing" 
+						or skill:objectName() == "fenmin" then
+					return p 
+				end
+			end
+			if skill:objectName() == "mingzhe" and p:getHandcardNum() < 2 then return p end
+		end
+	end
+	return source
+end
+sgs.ai_skill_invoke.sashuang = function(self, data)
+	local source = self.player
+	local room = source:getRoom()
+	local skill_list = source:getGeneral2():getSkillList(true, false)
+	if skill_list:length() == 0 then return true end
+	if skill_list:length() == 1 then
+		local skill = skill_list:first()
+		if skill:objectName() == "qixi" and not source:hasShownSkill("xiaoji") then return true end
+		if skill:objectName() == "yicheng" and not source:hasShownSkill("xiaoji") then return true end
+		if skill:objectName() == "yinghun" then return true end
+		if skill:objectName() == "tianyi" then return true end
+		if skill:objectName() == "buqu" and source:getHp() > 1 then return true end
+		if skill:objectName() == "yinbing" then return true end
+		if skill:objectName() == "keji" and #self.enemies > 2 then return true end
+	end
+	if skill_list:length() == 2 then
+		for _, skill in sgs.qlist(skill_list) do 
+			if skill:objectName() == "chouhai" or skill:objectName() == "kurou" or
+				skill:objectName() == "niaoxiang" or skill:objectName() == "duanbing" 
+					or skill:objectName() == "fenmin" then
+				return true
+			end
+			if skill:objectName() == "mingzhe" and source:getHandcardNum() < 3 then return true end
+			if skill:objectName() == "zhijian" and #self.friends < 2 then return true end
+		end
+	end
+	return false
+end
+local xinji_skill = {}
+xinji_skill.name = "xinji"
+table.insert(sgs.ai_skills, xinji_skill)
+xinji_skill.getTurnUseCard = function(self)
+	if self.player:hasUsed("#xinjiCard") or self.player:isNude() then return end
+	return sgs.Card_Parse("#xinjiCard:.:&xinji")
+end
+sgs.ai_skill_use_func["#xinjiCard"] = function(card, use, self)
+	local room = self.room
+	self:sort(self.enemies, "handcard")
+	local to
+	for _, p in pairs(self.enemies) do 
+		if p:objectName() == self.player:objectName() or p:getHandcardNum() <= 1 then continue end
+		if p:hasShownOneGeneral() then 
+			to = p 
+			break
+		end
+	end
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards,true)
+	local need_card = nil
+	for _, c in pairs(cards) do
+		if not c:isKindOf("Peach") then
+			need_card = c:getEffectiveId()
+			break
+		end
+	end
+	if to then
+		use.card = sgs.Card_Parse("#xinjiCard:"..need_card..":&xinji->" .. to:objectName())
+		local targets = sgs.SPlayerList()
+		targets:append(to)
+		if use.to then use.to = targets end
+	end
+end	

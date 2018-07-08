@@ -18,60 +18,62 @@ function sendMsgFrom(room,player,message)
 	msg.arg = message
 	room:sendLog(msg)
 end
+function isIdenticalGeneral(general1, general2)
+	local general1_ = general1:split("_")
+	local general2_ = general2:split("_")
+	realName1 = general1_[1]
+	realName2 = general2_[1]
+	return realName1 == realName2
+end
+function initGenerals()
+	local general_list = {}
+	for _,general in pairs(sgs.Sanguosha:getGeneralNames()) do
+		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun") then
+			table.insert(general_list, general)
+		end
+	end
+	for _,general in pairs(sgs.Sanguosha:getLimitedGeneralNames())do
+		if general:startsWith("lord_") then continue end
+		if not table.contains(general_list, general) then
+			table.insert(general_list,general)
+		end
+	end
+	return table.Shuffle(general_list)
+end
+function getGenerals(general_list, kingdom, selectedGenerals)
+	local new_general_list = table.copyFrom(general_list)
+	local return_general
+	for _,general in pairs(general_list) do
+		local is = sgs.Sanguosha:getGeneral(general):getKingdom() == kingdom
+		if is then
+			for _, p in pairs(selectedGenerals) do 
+				if isIdenticalGeneral(p, general) then
+					is = false
+				end
+			end
+		end
+		table.removeOne(new_general_list, general)
+		table.insert(new_general_list, general)
+		if is then
+			return_general = general
+			break
+		end
+	end
+	return return_general, new_general_list
+end
 function extra_general_init()
 	local extra_list = {}
 	for _,general in pairs(sgs.Sanguosha:getGeneralNames()) do
-		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun")
-			or general == "machao" or general == "jiangwei" then
+		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun") then
 			table.insert(extra_list, general)
 		end
 	end
 	return extra_list
 end
 --初始化分配武将  多势力场景专用
---[[function init()
-	local hash = {}
-	local multy_kingdom = {}
-	for _,general in pairs(sgs.Sanguosha:getLimitedGeneralNames())do
-		if general:startsWith("lord_") then continue end
-		if general == "zhonghui" then continue end
-		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun") then
-			local generalRealName
-			if general:endsWith("_wu") then
-				generalRealName = string.sub(general, 1, string.len(general) - 3)
-			else
-				generalRealName = string.sub(general, 1, string.len(general) - 4)
-			end
-			if multy_kingdom[generalRealName] then
-				table.insert(multy_kingdom[generalRealName],general)
-			else
-				local name = {}
-				table.insert(name, general)
-				multy_kingdom[generalRealName] = name
-			end
-		else
-			if not table.contains(hash, general) then
-				table.insert(hash,general)
-			end
-		end
-	end
-	for key,value in pairs(multy_kingdom) do
-		local general = value[math.random(1,#value)]
-		table.insert(hash,general)
-	end
-	return hash, multy_kingdom
-end--]]
 function init(extra_list, ban_list)
 	local hash = {}
 	local multy_kingdom = {}
-	for _,general in pairs(sgs.Sanguosha:getLimitedGeneralNames())do
-		if general:startsWith("lord_") then continue end
-		if table.contains(extra_list, general) then continue end
-		if table.contains(ban_list, general) then continue end
-		if not table.contains(hash, general) then
-			table.insert(hash,general)
-		end
-	end
 	for _,general in pairs(extra_list) do
 		if table.contains(ban_list, general) then continue end
 		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun") then
@@ -88,18 +90,22 @@ function init(extra_list, ban_list)
 				table.insert(name, general)
 				multy_kingdom[generalRealName] = name
 			end
-		elseif general == "machao" or general == "jiangwei" then
-			if multy_kingdom[general] then
-				table.insert(multy_kingdom[general],general)
-			else
-				local name = {}
-				table.insert(name, general)
-				multy_kingdom[general] = name
-			end
 		else
 			if not table.contains(hash, general) then
 				table.insert(hash,general)
 			end
+		end
+	end
+	for _,general in pairs(sgs.Sanguosha:getLimitedGeneralNames())do
+		if general:startsWith("lord_") then continue end
+		if table.contains(extra_list, general) then continue end
+		if table.contains(ban_list, general) then continue end
+		if multy_kingdom[general] then
+			table.insert(multy_kingdom[general],general)
+			continue
+		end
+		if not table.contains(hash, general) then
+			table.insert(hash,general)
 		end
 	end
 	for key,value in pairs(multy_kingdom) do
@@ -124,16 +130,6 @@ end
 function initByKingdom(extra_list, ban_list)
 	local hash = {wei = {},shu = {},wu = {},qun = {}}
 	local multy_kingdom = {}
-	for _,general in pairs(sgs.Sanguosha:getLimitedGeneralNames()) do
-		if general:startsWith("lord_") then continue end
-		if table.contains(extra_list, general) then continue end
-		if table.contains(ban_list, general) then continue end
-		if hash[sgs.Sanguosha:getGeneral(general):getKingdom()] then
-			if not table.contains(hash[sgs.Sanguosha:getGeneral(general):getKingdom()], general) then
-				table.insert(hash[sgs.Sanguosha:getGeneral(general):getKingdom()],general)
-			end
-		end
-	end
 	for _,general in pairs(extra_list) do
 		if table.contains(ban_list, general) then continue end
 		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun") then
@@ -150,19 +146,25 @@ function initByKingdom(extra_list, ban_list)
 				table.insert(name, general)
 				multy_kingdom[generalRealName] = name
 			end
-		elseif general == "machao" or general == "jiangwei" then
-			if multy_kingdom[general] then
-				table.insert(multy_kingdom[general],general)
-			else
-				local name = {}
-				table.insert(name, general)
-				multy_kingdom[general] = name
-			end
 		else
 			if hash[sgs.Sanguosha:getGeneral(general):getKingdom()] then
 				if not table.contains(hash[sgs.Sanguosha:getGeneral(general):getKingdom()], general) then
 					table.insert(hash[sgs.Sanguosha:getGeneral(general):getKingdom()],general)
 				end
+			end
+		end
+	end
+	for _,general in pairs(sgs.Sanguosha:getLimitedGeneralNames()) do
+		if general:startsWith("lord_") then continue end
+		if table.contains(extra_list, general) then continue end
+		if table.contains(ban_list, general) then continue end
+		if multy_kingdom[general] then
+			table.insert(multy_kingdom[general],general)
+			continue
+		end
+		if hash[sgs.Sanguosha:getGeneral(general):getKingdom()] then
+			if not table.contains(hash[sgs.Sanguosha:getGeneral(general):getKingdom()], general) then
+				table.insert(hash[sgs.Sanguosha:getGeneral(general):getKingdom()],general)
 			end
 		end
 	end
@@ -180,48 +182,6 @@ function initByKingdom(extra_list, ban_list)
 	end
 	return hash, multy_kingdom
 end
---[[function initByKingdom()
-	local hash = {wei = {},shu = {},wu = {},qun = {}}
-	local multy_kingdom = {}
-	for _,general in pairs(sgs.Sanguosha:getLimitedGeneralNames())do
-		if general:startsWith("lord_") then continue end
-		if general == "zhonghui" then continue end
-		if general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_wu") or general:endsWith("_qun") then
-			local generalRealName
-			if general:endsWith("_wu") then
-				generalRealName = string.sub(general, 1, string.len(general) - 3)
-			else
-				generalRealName = string.sub(general, 1, string.len(general) - 4)
-			end
-			if multy_kingdom[generalRealName] then
-				table.insert(multy_kingdom[generalRealName],general)
-			else
-				local name = {}
-				table.insert(name, general)
-				multy_kingdom[generalRealName] = name
-			end
-		else
-			if hash[sgs.Sanguosha:getGeneral(general):getKingdom()] then
-				if not table.contains(hash[sgs.Sanguosha:getGeneral(general):getKingdom()], general) then
-					table.insert(hash[sgs.Sanguosha:getGeneral(general):getKingdom()],general)
-				end
-			end
-		end
-	end
-	for key,value in pairs(multy_kingdom) do
-		local general = value[math.random(1,#value)]
-		local kingdom
-		if general:endsWith("_wu") then
-			kingdom = string.sub(general, string.len(general) - 1, string.len(general))
-		elseif general:endsWith("_shu") or general:endsWith("_wei") or general:endsWith("_qun") then
-			kingdom = string.sub(general, string.len(general) - 2, string.len(general))
-		end
-		if hash[kingdom] then
-			table.insert(hash[kingdom],general)
-		end
-	end
-	return hash, multy_kingdom
-end--]]
 --根据势力随机选取n名武将
 function getRandomGenerals(n,hash,kingdom,exceptions)
 	hash[kingdom] = table.Shuffle(hash[kingdom])
@@ -344,6 +304,7 @@ function initValue(extra_list, ban_list)
 	game_use_value["meng_luxun"] = { 360, 151, 56, 86, 100 }
 	game_use_value["meng_dianwei"] = { 520, 202, 80, 31, 88 }
 	game_use_value["meng_dongzhuo"] = { 520, 161, 78, 37, 100 }
+	game_use_value["meng_zhouyu"] = { 351, 159, 70, 85, 100 }
 	game_use_value["liuqi_shu"] = { 317, 117, 61, 74, 75 }
 	game_use_value["liuqi_qun"] = { 317, 117, 61, 74, 75 }
 	game_use_value["huangquan_shu"] = { 350, 135, 51, 64, 100 }
@@ -376,6 +337,9 @@ function initValue(extra_list, ban_list)
 	
 	head_value["caoren"] = {530, 100, 96, 63, 100}
 	deputy_value["caoren"] = {420, 100, 98, 63, 100}
+	
+	head_value["sunshangxiang_shu"] = { 460, 130, 55, 68, 100 }
+	deputy_value["sunshangxiang_shu"] = { 315, 100, 48, 68, 100 }
 	
 	local defult_value = { 400, 100, 60, 60, 100 }
 	return head_value, deputy_value, defult_value

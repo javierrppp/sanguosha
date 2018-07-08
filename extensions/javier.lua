@@ -60,6 +60,7 @@ meng_zhaoyun = sgs.General(extension2, "meng_zhaoyun", "shu","3")
 meng_luxun = sgs.General(extension2, "meng_luxun", "wu","3")
 meng_dianwei = sgs.General(extension2, "meng_dianwei", "wei","4")
 meng_dongzhuo = sgs.General(extension2, "meng_dongzhuo", "qun","4")
+meng_zhouyu = sgs.General(extension2, "meng_zhouyu", "wu","3")
 
 --**********测试专用**********-----
 
@@ -6592,6 +6593,171 @@ weishe = sgs.CreateTriggerSkill{
 meng_dongzhuo:addSkill(huangyin)
 meng_dongzhuo:addSkill(weishe)
 
+-----周公瑾-----
+
+sashuang = sgs.CreateTriggerSkill{
+	name = "sashuang",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart},
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
+		if player:getPhase() == sgs.Player_Start then
+			return self:objectName()
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local targets = sgs.SPlayerList()
+		targets:append(player)
+		if player:getRole() ~= "careerist" then
+			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+				if p:hasShownOneGeneral() and p:getKingdom() == player:getKingdom() and p:getRole() ~= "careerist" then
+					targets:append(p)
+				end
+			end
+		end
+		if targets:length() > 0 then
+			local to = room:askForPlayerChosen(player, targets, self:objectName(), "sashuang-invoke", true, true)
+			if to then
+				local to_data = sgs.QVariant()
+				to_data:setValue(to)
+				player:setTag("sashuangTag", to_data)
+				return true
+			end
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		local to = player:getTag("sashuangTag"):toPlayer()
+		to:drawCards(1)
+		if room:askForSkillInvoke(to, self:objectName(), sgs.QVariant("changeHero:::" .. to:getKingdom())) then
+			local generalList = room:getTag("generalListTag"):toString():split("+")
+			if #generalList <= 1 then
+				generalList = initGenerals()
+			end
+			local selected_general = {}
+			for _, p in sgs.qlist(room:getAlivePlayers()) do 
+				if not table.contains(selected_general, p:getGeneralName()) then
+					table.insert(selected_general, p:getGeneralName())
+				end
+				if not table.contains(selected_general, p:getGeneral2Name()) then
+					table.insert(selected_general, p:getGeneral2Name())
+				end
+			end
+			local general, new_general_list = getGenerals(generalList, to:getKingdom(), selected_general)
+			table.removeOne(new_general_list, to:getGeneral2Name())
+			table.insert(new_general_list, to:getGeneral2Name())
+			sendMsg(room, table.concat(new_general_list, "+"))
+			room:setTag("generalListTag", sgs.QVariant(table.concat(new_general_list, "+")))
+			--to:removeGeneral(false)  --士兵没有General的bug
+			to:showGeneral(false)
+			local skill_list = to:getGeneral2():getSkillList(true, false)
+			if skill_list:length() > 0 then
+				for _, skill in sgs.qlist(skill_list) do
+					room:detachSkillFromPlayer(to,skill:objectName())
+				end
+			end
+			room:changePlayerGeneral2(to, general)
+			skill_list = sgs.Sanguosha:getGeneral(general):getSkillList(true, false)
+			if skill_list:length() > 0 then
+				for _, skill in sgs.qlist(skill_list) do
+					room:acquireSkill(to, skill,true,false)
+				end
+			end
+		end
+	end,
+	priority = -1,
+}
+xinjiCard = sgs.CreateSkillCard{
+    name = "xinjiCard", 
+	skill_name = "xinji",
+	filter = function(self, targets, to_select) 
+		if #targets ~= 0 then return false end
+		return not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName()
+	end,
+	on_effect = function(self, effect)
+        local room = effect.from:getRoom()
+		room:showAllCards(effect.to)
+		room:broadcastSkillInvoke(self:objectName())
+		room:getThread():delay(2000)
+		local suit = sgs.Sanguosha:getCard(self:getSubcards():first()):getSuit()
+		local has = 0
+		local dummy = sgs.DummyCard()
+		for _, c in sgs.qlist(effect.to:getHandcards()) do
+			if c:getSuit() == suit then
+				has = 1
+				dummy:addSubcard(c)
+			end
+		end
+		if has > 0 then
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, effect.from:objectName(), self:objectName(), nil)
+			room:throwCard(dummy, reason, nil)
+		else
+			room:addPlayerMark(effect.to,"xinjidistant")
+			local msg = sgs.LogMessage()
+			msg.type = "#xinjimsg"
+			msg.from = effect.from
+			msg.to:append(effect.to)
+			room:sendLog(msg)
+        end
+	end
+}
+xinji = sgs.CreateViewAsSkill{
+	name = "xinji", 
+	n = 1, 
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#xinjiCard")
+	end,
+	view_filter = function(self, selected, to_select)
+		return not sgs.Self:isJilei(to_select)
+	end, 
+	view_as = function(self, cards)
+	if #cards == 0 then return nil end
+		local card = xinjiCard:clone()
+		card:addSubcard(cards[1])
+		return card
+	end
+}
+xinji1 = sgs.CreateTriggerSkill{
+	name = "#xinji1" ,
+	global = true,
+	events = {sgs.EventPhaseEnd},
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return "" end
+		if player:getPhase() == sgs.Player_Play then
+			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+				if p:getMark("xinjidistant") > 0 then
+					room:setPlayerMark(p,"xinjidistant",0)
+				end
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+	end
+}
+xinji2 = sgs.CreateDistanceSkill{
+	name = "#xinji2",
+	global = true,
+	correct_func = function(self, from, to)
+		if from:hasSkill("xinji") and to:getMark("xinjidistant") > 0 then
+		    return - 999
+		else
+			return 0
+		end
+	end
+}
+meng_zhouyu:addSkill(sashuang)
+meng_zhouyu:addSkill(xinji)
+meng_zhouyu:addSkill(xinji1)
+meng_zhouyu:addSkill(xinji2)
+extension2:insertRelatedSkills("xinji","#xinji1")
+extension2:insertRelatedSkills("xinji","#xinji2")
+
 --**********测试专用**********-----
 
 zhenhan = sgs.CreateTriggerSkill{
@@ -6639,6 +6805,8 @@ maliang:addCompanion("masu")
 chengong:addCompanion("lvbu")
 caojie:addCompanion("liuxie")
 xiahoushi:addCompanion("zhangfei")
+meng_zhouyu:addCompanion("sunce")
+meng_zhaoyun:addCompanion("liushan")
 
 --**********猛包**********-----
 
@@ -7137,7 +7305,7 @@ sgs.LoadTranslationTable{
 	["$Ekuanggu2"] = "嗯哈哈哈哈哈哈，赢你，还不容易！",
 	["Eduoshi"] = "度势",
 	["duoshi_trigger"] = "度势",
-	[":Eduoshi"] = "你可以将一张牌当做【以逸待劳】使用（出牌阶段每种花色限一次）。你的回合结束后，若你于此回合使用【以逸待劳】的次数不小于3，你将手牌补至体力上限（最多5张）。",
+	[":Eduoshi"] = "主将技，你可以将一张牌当做【以逸待劳】使用（出牌阶段每种花色限一次）。你的回合结束后，若你于此回合使用【以逸待劳】的次数不小于3，你将手牌补至体力上限（最多5张）。",
 	["lianying"] = "连营",
 	[":lianying"] = "副将技，每当你失去最后的手牌后，你可以摸一张牌。",
 	["$lianying1"] = "旧的不去，新的不来",
@@ -7186,6 +7354,25 @@ sgs.LoadTranslationTable{
 	[":weishe"] = "你使用【杀】或黑色锦囊牌指定目标后，可以令其中一名角色弃置一张牌。",
 	["$weishe1"] = "什么礼治纲常，我说的，就是纲常", 
 	["$weishe2"] = "不施严法怎治乱民？休得啰嗦！", 
+	["meng_zhouyu"] = "周公瑾",
+	["#meng_zhouyu"] = "平虏伯",
+	["~meng_zhouyu"] = "既生瑜，何生亮...既生瑜，何生亮！",
+	["sashuang"] = "飒爽",
+	[":sashuang"] = "你的回合开始时，你可以令一名与你势力相同的角色摸一张牌，然后该角色可以变更副将。",
+	["$sashuang1"] = "哈哈哈哈哈...",
+	["$sashuang2"] = "伯符，且看我这一手！",
+	["xinji"] = "心计",
+	[":xinji"] =  "出牌阶段限一次，你可以弃置一张牌并指定一名其他角色，其展示所有手牌并弃置所有等同于你弃置的牌花色相同的手牌。然后若其手牌数没有减少，此回合你与其的距离视为1。",
+	["$xinji1"] = "与我为敌，就当这般生不如死！",
+	["$xinji2"] = "抉择吧！在苦与痛的地狱中！",
+	["meng_zhugeliang"] = "诸葛孔明",
+	["#meng_zhugeliang"] = "赤壁妖术师",
+	["qixing"] = "七星",
+	[":qixing"] = "当你明置此武将牌时，你将牌堆顶的七张牌扣置于你的武将牌上，称为“星”，然后你可以用任意张手牌替换等量的“星”；摸牌阶段结束时，你可以用任意张手牌替换等量的“星”。",
+	["kuangfeng"] = "狂风",
+	[":kuangfeng"] = "结束阶段，你可以移去一张“星”并选择一名角色，然后直到你的下回合开始之前，当该角色受到火焰伤害时，此伤害+1。",
+	["dawu"] = "大雾",
+	[":dawu"] = "结束阶段，你可以移去任意张“星”并选择等量的角色，然后直到你的下回合开始之前，当这些角色受到非雷电伤害时，防止此伤害。",
 	--测试专用--
 	["gaoda"] = "高达",
 	["#gaoda"] = "做测试啦",
@@ -7254,6 +7441,8 @@ sgs.LoadTranslationTable{
 	["~quji"] = "指定一名已受伤的其他角色",
 	["@wenji-card"] = "你可以将一张牌交给%src",
 	["yinbing-invoke"] = "你可以指定至多%arg名角色，分别弃置指定角色的一张牌",
+	["sashuang:changeHero"] = "你可以更换你的副将<br />从武将牌堆顶中依次翻开武将，直到遇到与你势力相同的武将，更换你的副将，将翻开的武将置于武将牌堆底",
+	["sashuang-invoke"] = "你可以指定一名与你势力相同的角色，令其摸一张牌，然后其可以更换副将",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
@@ -7291,6 +7480,7 @@ sgs.LoadTranslationTable{
 	["qiaoshuiCard"] = "巧说",
 	["shenduanCard"] = "慎断",
 	["#tuifeng-throw"] = "推锋",
+	["xinjiCard"] = "心计",
 -----pile-----
 	["lead"] = "锋",
 	["power"] = "权",
@@ -7308,6 +7498,7 @@ sgs.LoadTranslationTable{
 	
 	["#message"] = "%arg",
 	["#messagefrom"] = "%from %arg",
+	["#xinjimsg"] = "%from 于当前出牌阶段与%to 的距离视为1",
 	
 	
 	

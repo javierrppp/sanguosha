@@ -10,6 +10,7 @@ tangzi_wei = sgs.General(extension_multy, "tangzi_wei", "wei", 4, true, true, fa
 tangzi_wu = sgs.General(extension_multy, "tangzi_wu", "wu", 4, true, true, false)
 machao_qun = sgs.General(extension_multy, "machao_qun", "qun", 4, true, true, false)
 jiangwei_wei = sgs.General(extension_multy, "jiangwei_wei", "wei", 3, true, true, false)
+sunshangxiang_shu = sgs.General(extension_multy, "sunshangxiang_shu", "shu", 4, false, true, false)
 
 
 -----刘琦-----
@@ -777,6 +778,142 @@ jiangwei_wei:addSkill(zhanxing)
 jiangwei_wei:addSkill(Mtiaoxin)
 jiangwei_wei:addCompanion("zhonghui")
 
+-----孙尚香*蜀-----
+
+shaluXiaoji = sgs.CreateTriggerSkill{
+	name = "shaluXiaoji" ,
+	frequency = sgs.Skill_Frequent ,
+	relate_to_place = "head",
+	events = {sgs.CardsMoveOneTime} ,
+	can_trigger = function(self, event, room, player, data)
+		local room = player:getRoom()
+		local move = data:toMoveOneTime()
+		if move.from and move.from:hasSkill(self:objectName()) and move.from:objectName() == player:objectName() and move.from_places:contains(sgs.Player_PlaceEquip) then
+			for i = 0, move.card_ids:length() - 1, 1 do
+				if not player:isAlive() then return false end
+				if move.from_places:at(i) == sgs.Player_PlaceEquip then
+					return self:objectName()
+				end
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(ask_who,self:objectName(),data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		player:drawCards(2)
+		return false
+	end
+}
+liangzhu = sgs.CreateTriggerSkill{
+	name = "liangzhu" ,
+	frequency = sgs.Skill_Frequent ,
+	events = {sgs.HpRecover} ,
+	relate_to_place = "deputy",
+	can_trigger = function(self, event, room, player, data)
+		local room = player:getRoom()
+		local recover = data:toRecover()
+		if not (player and player:isAlive()) then return "" end
+		local skill_list,player_list = {},{}
+		if player:getPhase() == sgs.Player_Play then
+			local sunshangxiangs = room:findPlayersBySkillName(self:objectName())
+			if sunshangxiangs:length() > 0 then
+				for _, sunshangxiang in sgs.qlist(sunshangxiangs) do
+					table.insert(skill_list, self:objectName())
+					table.insert(player_list, sunshangxiang:objectName())
+				end
+			end
+		end
+		if #skill_list > 0 then
+			return table.concat(skill_list,"|"), table.concat(player_list,"|")
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(ask_who,self:objectName(),data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		local recover = data:toRecover()
+		local choices = {"me_draw"}
+		local drawNum = 1
+		if ask_who:getMark("@fanxiangMark") == 0 then
+			drawNum = 2
+		end
+		table.insert(choices, "not_me_draw" .. drawNum)
+		local choice = room:askForChoice(ask_who, "liangzhu", table.concat(choices, "+"))
+		if choice == "me_draw" then
+			ask_who:drawCards(1)
+		else
+			player:drawCards(drawNum)
+		end
+		return false
+	end
+}
+fanxiangCard = sgs.CreateSkillCard{
+	name = "fanxiangCard",
+	skill_name = "fanxiang",
+	target_fixed = false,
+	will_throw = false,
+	mute = true,
+	filter = function(self, targets, to_select, player) 
+		return to_select:objectName() ~= sgs.Self:objectName()
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	about_to_use = function(self, room, cardUse)
+		room:removePlayerMark(cardUse.from, "@fanxiangMark")
+		room:broadcastSkillInvoke("fanxiang", cardUse.from)
+		room:doSuperLightbox("sunshangxiang_shu", "fanxiang")
+		self:cardOnUse(room, cardUse)
+	end,
+	on_use = function(self, room, source, targets)
+		local to = targets[1]
+		room:swapSeat(source, to)
+		local recover = sgs.RecoverStruct()
+		recover.who = source
+		room:recover(source, recover)
+	end,
+}
+fanxiangVS = sgs.CreateZeroCardViewAsSkill{   
+	name = "fanxiang",
+	view_as = function(self)
+		local skillcard = fanxiangCard:clone()
+		skillcard:setSkillName(self:objectName())
+		skillcard:setShowSkill(self:objectName())
+		return skillcard
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@fanxiangMark") > 0 and player:isWounded()
+	end,
+}
+fanxiang = sgs.CreateTriggerSkill{
+	name = "fanxiang",
+	can_preshow = false,
+	relate_to_place = "deputy",
+	events = {sgs.ChoiceMade},
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@fanxiangMark", 
+	view_as_skill = fanxiangVS,
+	can_trigger = function(self, event, room, player, data)
+		return ""
+	end,
+}
+sunshangxiang_shu:addSkill(shaluXiaoji)
+sunshangxiang_shu:addSkill(liangzhu)
+sunshangxiang_shu:addSkill(fanxiang)
+sunshangxiang_shu:addCompanion("liubei")
+sunshangxiang_shu:setDeputyMaxHpAdjustedValue(-1)
+
 sgs.LoadTranslationTable{
 	["extension_multy"] = "多势力武将包",
 	["liuqi_shu"] = "刘琦",
@@ -871,5 +1008,23 @@ sgs.LoadTranslationTable{
 	["@zhanxing"] = "获得其中一半的牌",
 	["zhanxing#up"] = "弃置",
 	["zhanxing#down"] = "获取",
+	
+	["sunshangxiang_shu"] = "孙尚香",
+	["#sunshangxiang_shu"] = "乱世巾帼",
+	["shaluXiaoji"] = "枭姬",
+	[":shaluXiaoji"] = "主将技，每当你失去装备区里的装备牌后，你可以摸两张牌。",
+	["$shaluXiaoji1"] = "双剑夸巧，不让须眉！",
+	["$shaluXiaoji2"] = "弓马何须忌红妆？",
+	["liangzhu"] = "良助",
+	[":liangzhu"] = "副将技，此武将牌上单独的阴阳鱼个数-1，当一名角色于其出牌阶段内回复体力后，你可以选择一项：1.摸一张牌；2.令其摸一张牌（若你已发动限定技，则这一项更改为2）。",
+	["$liangzhu1"] = "吾愿携弩，征战沙场，助君一战！",
+	["$liangzhu2"] = "两国结盟，你我都是一家人！",
+	["fanxiang"] = "返乡",
+	[":fanxiang"] = "副将技，限定技，出牌阶段，若你已受伤，你可以指定一名其他角色，你与其交换位置，然后你回复一点体力。",
+	["$fanxiang1"] = "兄命难违，从此两别…",
+	["$fanxiang2"] = "今夕一别，不知何日再见…",
+	["me_draw"] = "摸1张牌",
+	["not_me_draw1"] = "其摸1张牌",
+	["not_me_draw2"] = "其摸2张牌",
 }
 return {extension_multy}
