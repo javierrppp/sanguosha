@@ -6895,7 +6895,7 @@ dawuVS = sgs.CreateViewAsSkill{
 dawu = sgs.CreateTriggerSkill{
 	name = "dawu",
 	can_preshow = true,
-	events = {sgs.EventPhaseStart, sgs.Death},
+	events = {sgs.EventPhaseStart, sgs.Death, sgs.EventLoseSkill},
 	view_as_skill = dawuVS,
     can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
@@ -6914,6 +6914,11 @@ dawu = sgs.CreateTriggerSkill{
 				return self:objectName()
 			end
 		end
+		--[[if event == sgs.EventLoseSkill and data:toString() == self:objectName() then
+			for _,p in sgs.qlist(room:getAllPlayers()) do
+				p:loseAllMarks("@fog")
+			end
+		end--]]
 		return ""
 	end,
     on_cost = function(self, event, room, player, data, ask_who)
@@ -6989,7 +6994,7 @@ kuangfengVS = sgs.CreateViewAsSkill{
 kuangfeng = sgs.CreateTriggerSkill{
 	name = "kuangfeng",
 	can_preshow = true,
-	events = {sgs.EventPhaseStart, sgs.Death},
+	events = {sgs.EventPhaseStart, sgs.Death, sgs.EventLoseSkill},
 	view_as_skill = kuangfengVS,
     can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
@@ -7008,6 +7013,12 @@ kuangfeng = sgs.CreateTriggerSkill{
 				return self:objectName()
 			end
 		end
+		--[[if event == sgs.EventLoseSkill and data:toString() == self:objectName() then
+			sendMsg(room, "eee")
+			for _,p in sgs.qlist(room:getAllPlayers()) do
+				p:loseAllMarks("@fog")
+			end
+		end--]]
 		return ""
 	end,
     on_cost = function(self, event, room, player, data, ask_who)
@@ -7069,6 +7080,10 @@ xumingCard = sgs.CreateSkillCard{
 		room:broadcastSkillInvoke("xuming")
 		room:detachSkillFromPlayer(source,"kuangfeng")
 		room:detachSkillFromPlayer(source,"dawu")
+		for _,p in sgs.qlist(room:getAllPlayers()) do
+			p:loseAllMarks("@fog")
+			p:loseAllMarks("@gale")
+		end
 		sendMsgByFrom(room, "发动了技能“续命”", source)
 	end,
 }

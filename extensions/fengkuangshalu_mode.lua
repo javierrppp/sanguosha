@@ -6,6 +6,7 @@ table.insert(ban_list, "litong")
 table.insert(extra_list, "shalu_litong")
 table.insert(extra_list, "shalu_guojia")
 table.insert(extra_list, "shalu_weiyan")
+table.insert(ban_list, "meng_zhugeliang")
 local hash, multy_kingdom = init(extra_list, ban_list)
 head_value, deputy_value, defult_value = initValue()
 shalu = sgs.CreateTriggerSkill{

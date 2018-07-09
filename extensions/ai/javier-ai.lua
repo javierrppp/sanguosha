@@ -5748,3 +5748,190 @@ sgs.ai_skill_use_func["#xinjiCard"] = function(card, use, self)
 		if use.to then use.to = targets end
 	end
 end	
+
+-----诸葛孔明-----
+
+sgs.ai_skill_invoke.qixing = function(self, data)
+	return true
+end
+sgs.ai_skill_use["@@kuangfeng"] = function(self, prompt)
+	local friendly_fire
+	for _, friend in ipairs(self.friends_noself) do
+		if friend:getMark("@gale") == 0 and self:damageIsEffective(friend, sgs.DamageStruct_Fire) and friend:faceUp() and not self:willSkipPlayPhase(friend)
+			and (friend:hasSkill("huoji") or friend:hasWeapon("fan") or (friend:hasSkill("yeyan") and friend:getMark("@flame") > 0)) then
+			friendly_fire = true
+			break
+		end
+	end
+
+	local is_chained = 0
+	local target = {}
+	for _, enemy in ipairs(self.enemies) do
+		if enemy:getMark("@gale") == 0 and self:damageIsEffective(enemy, sgs.DamageStruct_Fire) then
+			if enemy:isChained() then
+				is_chained = is_chained + 1
+				table.insert(target, enemy)
+			elseif enemy:hasArmorEffect("vine") then
+				table.insert(target, 1, enemy)
+				break
+			end
+		end
+	end
+	local usecard=false
+	if friendly_fire and is_chained > 1 then usecard=true end
+	self:sort(self.friends, "hp")
+	if target[1] and not self:isWeak(self.friends[1]) then
+		if target[1]:hasArmorEffect("vine") and friendly_fire then usecard = true end
+	end
+	if usecard then
+		card_ids = self.player:getPile("stars")
+		if cards:length() == 0 then return "." end
+		local cards = idToCard(card_ids)
+		self:sortByUseValue(cards, true)
+		if not target[1] then table.insert(target,self.enemies[1]) end
+		if target[1] then return "#kuangfengCard:" .. cards[1]:getId() .. ":&kuangfeng->" .. target[1]:objectName() else return "." end
+	else
+		return "."
+	end
+end
+sgs.ai_card_intention.kuangfengCard = 80
+
+sgs.ai_skill_use["@@dawu"] = function(self, prompt)
+	self:sort(self.friends_noself, "hp")
+	local targets = {}
+	self:sort(self.friends_noself,"defense")
+	for _, friend in ipairs(self.friends_noself) do
+		if friend:getMark("@fog") == 0 and self:isWeak(friend) and not friend:hasSkill("buqu")
+			and not (friend:hasSkill("hunzi") and friend:getMark("hunzi") == 0 and friend:getHp() > 1) then
+				table.insert(targets, friend:objectName())
+				break
+		end
+	end
+	if self.player:getPile("stars"):length() > #targets and self:isWeak() then table.insert(targets, self.player:objectName()) end
+	if #targets > 0 then
+		local card_ids = sgs.QList2Table(self.player:getPile("stars"))
+		local cards = idToCard(card_ids)
+		self:sortByUseValue(cards, true)
+		local length = #targets
+		local card_needs = {}
+		for _, card in pairs(cards) do
+			if #card_needs >= length then break end
+			table.insert(card_needs, card:getId())
+		end
+		return "#dawuCard:" .. table.concat(card_needs, "+") .. ":&dawu->" .. table.concat(targets, "+")
+	end
+	return "."
+end
+
+sgs.ai_card_intention.dawuCard = -70
+
+sgs.ai_skill_use["@@xuming"] = function(self, prompt)
+	local lost_hp = self.player:getMaxHp() - self.player:getHp()
+	local length = self.player:getPile("stars"):length()
+	if self:getCardsNum("Peach") > 0 then return "." end
+	if length > 0 then
+		local need_num = length < lost_hp and length or lost_hp
+		local peach_num_to_escape_dying = 1 - self.player:getHp()
+		if peach_num_to_escape_dying <= 0 then return "." end
+		if need_num > peach_num_to_escape_dying + 1 then
+			need_num = need_num - 1
+		end
+		if need_num > peach_num_to_escape_dying + 2 then
+			need_num = need_num - 1
+		end
+		local card_ids = sgs.QList2Table(self.player:getPile("stars"))
+		local cards = idToCard(card_ids)
+		self:sortByUseValue(cards, true)
+		local card_needs = {}
+		for _, card in pairs(cards) do
+			if #card_needs >= need_num then break end
+			table.insert(card_needs, card:getId())
+		end
+		return "#xumingCard:" .. table.concat(card_needs, "+") .. ":&xuming"
+	end
+	return "."
+end
+sgs.ai_skill_movecards.qixing = function(self, upcards, downcards, min_num, max_num)
+	local qixing_cards, hand_cards = sgs.IntList(), sgs.IntList()
+	local upcards_copy = table.copyFrom(upcards)
+	local downcards_copy = table.copyFrom(downcards)
+	local number = #upcards_copy
+	--self:sortByUseValue(upcards, true)
+	for _, c in pairs(upcards_copy) do
+		qixing_cards:append(c)
+	end
+	for _, c in pairs(downcards_copy) do
+		hand_cards:append(c)
+	end
+	local up = {}
+	local down = {}
+	local handcard_list = {}
+	local useValueSelect = true
+	local keepValueSelect = true
+	for _, c in sgs.qlist(qixing_cards) do
+		for _, h in sgs.qlist(hand_cards) do
+			if self.player:hasSkill("jizhi") then
+				local pile_card = sgs.Sanguosha:getCard(c)
+				if pile_card:isNDTrick() and table.contains(downcards_copy, h) then
+					table.insert(downcards_copy, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(upcards_copy, h)
+					table.removeOne(downcards_copy, h)
+					keepValueSelect = false
+					break
+				end
+			end
+			if self.player:hasSkill("xiaoji") then
+				local pile_card = sgs.Sanguosha:getCard(c)
+				if pile_card:isKindOf("EquipCard") and table.contains(downcards_copy, h) then
+					table.insert(downcards_copy, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(upcards_copy, h)
+					table.removeOne(downcards_copy, h)
+					keepValueSelect = false
+					break
+				end
+			end
+			if self:isWeak(self.player) and self:getCardsNum("Jink") + self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < 2 then
+				local pile_card = sgs.Sanguosha:getCard(c)
+				local h_card = sgs.Sanguosha:getCard(h)
+				if keepValueSelect and (pile_card:isKindOf("Peach") or pile_card:isKindOf("Jink") or pile_card:isKindOf("Analeptic")) and table.contains(downcards_copy, h) then
+					table.insert(downcards_copy, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(upcards_copy, h)
+					table.removeOne(downcards_copy, h)
+					keepValueSelect = false
+					break
+				end
+				if self:getKeepValue(pile_card) > self:getKeepValue(h_card) and table.contains(downcards_copy, h) then
+					table.insert(downcards_copy, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(upcards_copy, h)
+					table.removeOne(downcards_copy, h)
+					break
+				end
+			else 
+				local pile_card = sgs.Sanguosha:getCard(c)
+				local h_card = sgs.Sanguosha:getCard(h)
+				if useValueSelect and self:getUseValue(pile_card) > self:getUseValue(h_card) and table.contains(downcards_copy, h) then
+					table.insert(downcards_copy, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(upcards_copy, h)
+					table.removeOne(downcards_copy, h)
+					useValueSelect = false
+					break
+				elseif self:getKeepValue(pile_card) > self:getKeepValue(h_card) and table.contains(downcards_copy, h) then
+					table.insert(downcards_copy, c)
+					table.removeOne(upcards_copy, c)
+					table.insert(upcards_copy, h)
+					table.removeOne(downcards_copy, h)
+					break
+				end
+			end
+		end
+	end
+	self:log("upcards:" .. table.concat(upcards_copy, "+"))
+	self:log("downcards:" .. table.concat(downcards_copy, "+"))
+	if #downcards_copy ~= min_num then return upcards, downcards end
+	return upcards_copy, downcards_copy
+end

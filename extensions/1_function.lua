@@ -1,3 +1,12 @@
+function idToCard(ids)
+	--local cards = sgs.CardList()
+	local cards = {}
+	for _, id in pairs(ids) do 
+		local card = sgs.Sanguosha:getCard(id)
+		table.insert(cards, card)
+	end
+	return cards
+end
 function sendMsg(room,message)
 	local msg = sgs.LogMessage()
 	msg.type = "#message"
