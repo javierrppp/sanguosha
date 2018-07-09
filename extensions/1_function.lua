@@ -305,6 +305,7 @@ function initValue(extra_list, ban_list)
 	game_use_value["meng_dianwei"] = { 520, 202, 80, 31, 88 }
 	game_use_value["meng_dongzhuo"] = { 520, 161, 78, 37, 100 }
 	game_use_value["meng_zhouyu"] = { 351, 159, 70, 85, 100 }
+	game_use_value["meng_zhugeliang"] = { 331, 116, 48, 95, 100 }
 	game_use_value["liuqi_shu"] = { 317, 117, 61, 74, 75 }
 	game_use_value["liuqi_qun"] = { 317, 117, 61, 74, 75 }
 	game_use_value["huangquan_shu"] = { 350, 135, 51, 64, 100 }

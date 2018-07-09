@@ -5708,6 +5708,7 @@ sgs.ai_skill_invoke.sashuang = function(self, data)
 			end
 			if skill:objectName() == "mingzhe" and source:getHandcardNum() < 3 then return true end
 			if skill:objectName() == "zhijian" and #self.friends < 2 then return true end
+			if skill:objectName() == "zhuiyi" and #self.friends < 2 then return true end
 		end
 	end
 	return false
