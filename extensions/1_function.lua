@@ -7,6 +7,39 @@ function idToCard(ids)
 	end
 	return cards
 end
+function FakeMove(ids, movein, player)  --假移动
+	local room = player:getRoom()
+	if movein then
+		local move = sgs.CardsMoveStruct(ids, nil, player, sgs.Player_PlaceTable, sgs.Player_PlaceSpecial,
+			sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, player:objectName(), "fakemove", ""))
+		move.to_pile_name = "&fakemove"
+		local moves = sgs.CardsMoveList()
+		moves:append(move)
+		local _player = sgs.SPlayerList()
+		_player:append(player)
+		room:notifyMoveCards(true, moves, false, _player)
+		room:notifyMoveCards(false, moves, false, _player)
+	else
+		local move = sgs.CardsMoveStruct(ids, player, nil, sgs.Player_PlaceSpecial, sgs.Player_PlaceTable,
+			sgs.CardMoveReason(sgs.CardMoveReason_S_MASK_BASIC_REASON, player:objectName(), "fakemove", ""))
+		move.from_pile_name = "&fakemove"
+		local moves = sgs.CardsMoveList()
+		moves:append(move)
+		local _player = sgs.SPlayerList()
+		_player:append(player)
+		room:notifyMoveCards(true, moves, false, _player)
+		room:notifyMoveCards(false, moves, false, _player)
+	end
+end
+function inMyAttackRangeFromV2(from, to, distance_fix)  --国战无distance_fix
+	if from:distanceTo(to, distance_fix) == -1 then return false end
+	if from:objectName() == to:objectName() then return false end
+	local in_attack_range_players = from:property("in_my_attack_range"):toString():split("+")
+	if table.contains(in_attack_range_players, to:objectName()) then  --for DIY Skills
+		return true
+	end
+	return from:distanceTo(to, distance_fix) <= from:getAttackRange()
+end
 function sendMsg(room,message)
 	local msg = sgs.LogMessage()
 	msg.type = "#message"

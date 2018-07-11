@@ -15,7 +15,7 @@ sunshangxiang_shu = sgs.General(extension_multy, "sunshangxiang_shu", "shu", 4, 
 
 -----刘琦-----
 
-wenji = sgs.CreateOneCardViewAsSkill{
+wenjiVS = sgs.CreateOneCardViewAsSkill{
 	name = "wenji",
 	view_filter = function(self, card)
 		local wenji_card_player_list = sgs.Self:property("wenjiProp"):toString():split("+")
@@ -60,10 +60,11 @@ wenjiCard = sgs.CreateSkillCard{
 	end
 }
 	
-wenji_ask_card = sgs.CreateTriggerSkill{
-	name = "#wenji_ask_card",
+wenji = sgs.CreateTriggerSkill{
+	name = "wenji",
 	can_preshow = true,
-	global = true,
+	--global = true,
+	view_as_skill = wenjiVS,
 	frequency = sgs.Skill_NotFrequent,
 	events = {sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.CardUsed, sgs.CardResponded},
 	can_trigger = function(self, event, room, player, data)
@@ -242,13 +243,13 @@ benzhi_distance = sgs.CreateDistanceSkill{
 	end
 }
 liuqi_qun:addSkill(wenji)
-liuqi_qun:addSkill(wenji_ask_card)
+--liuqi_qun:addSkill(wenji_ask_card)
 liuqi_qun:addSkill(benzhi)
 liuqi_qun:addSkill(benzhi_distance)
 liuqi_shu:addSkill(wenji)
-liuqi_shu:addSkill(wenji_ask_card)
+--liuqi_shu:addSkill(wenji_ask_card)
 liuqi_shu:addSkill(tunjiang)
-sgs.insertRelatedSkills(extension, "wenji", "#wenji_ask_card")
+--sgs.insertRelatedSkills(extension, "wenji", "#wenji_ask_card")
 sgs.insertRelatedSkills(extension, "benzhi", "#benzhi_distance")
 
 liuqi_qun:addCompanion("liubiao")

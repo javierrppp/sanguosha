@@ -3750,7 +3750,7 @@ function SmartAI:damageIsEffective_(damageStruct)
 	end--]]
 	if to:getMark("@fu") > 0 then
 		local xizhicai = sgs.findPlayerByShownSkillName("xianfu")
-		if self:isFriend(xizhicai) and self:isWeak(xizhicai) then
+		if self:isFriend(from, xizhicai) and self:isWeak(xizhicai) then
 			return false
 		end
 	end
