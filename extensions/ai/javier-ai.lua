@@ -4775,7 +4775,6 @@ sgs.ai_skill_invoke.wenji = function(self, data)
 end
 sgs.ai_skill_cardask["@wenji-card"] = function(self, data, pattern, target, target2)
     local room = self.player:getRoom()
-	self:log("0.0")
 	local to = self.player:getTag("wenjiAskTag"):toPlayer()
 	local need_jink = false
 	local need_peach = false
@@ -5678,8 +5677,8 @@ sgs.ai_skill_playerchosen.sashuang = function(self, targets)
 						or skill:objectName() == "fenmin" then
 					return p 
 				end
+				if skill:objectName() == "mingzhe" and p:getHandcardNum() < 2 then return p end
 			end
-			if skill:objectName() == "mingzhe" and p:getHandcardNum() < 2 then return p end
 		end
 	end
 	return source
@@ -5934,4 +5933,65 @@ sgs.ai_skill_movecards.qixing = function(self, upcards, downcards, min_num, max_
 	self:log("downcards:" .. table.concat(downcards_copy, "+"))
 	if #downcards_copy ~= min_num then return upcards, downcards end
 	return upcards_copy, downcards_copy
+end
+
+-----陆绩-----
+
+sgs.ai_skill_invoke.huaijv = function(self, data)
+	return true
+end
+sgs.ai_use_value.zhenglunCard = 15
+sgs.ai_use_priority.zhenglunCard = 15
+zhenglun_skill = {}
+zhenglun_skill.name = "zhenglun"
+table.insert(sgs.ai_skills, zhenglun_skill)
+zhenglun_skill.getTurnUseCard = function(self,inclusive)
+	if self.player:usedTimes("#zhenglunCard") < 2 then
+		return sgs.Card_Parse("#zhenglunCard:.:&zhenglun")
+	end
+end
+sgs.ai_skill_use_func["#zhenglunCard"] = function(card, use, self)
+	local room = self.room
+	local source = self.player
+	self:sort(self.friends, "hp")
+	local can_use = false
+	if source:getHp() == 1 and source:getMark("@orange") > 0 then can_use = true end
+	if source:getMaxHp() == 1 then return false end
+	if not source:isWounded() and self:getCardsNum("Peach") >= source:getMaxHp() - 1 then can_use = true end
+	if not source:isWounded() and #self.friends_noself > 0 and self.friends_noself[1]:isWounded() and source:hasSkill("jieyin") then can_use = true end
+	if can_use then
+		use.card = card
+	end
+end
+sgs.ai_use_value.yiliCard = 15.2
+sgs.ai_use_priority.yiliCard = 15.2
+yili_skill = {}
+yili_skill.name = "yili"
+table.insert(sgs.ai_skills, yili_skill)
+yili_skill.getTurnUseCard = function(self)
+	if self.player:getMark("@orange") > 0 then
+		return sgs.Card_Parse("#yiliCard:.:&yili")
+	end
+end
+sgs.ai_skill_use_func["#yiliCard"] = function(card, use, self)
+	local room = self.room
+	local targets = sgs.SPlayerList()
+	self:log("targets:"..targets:length())
+	local source = self.player
+	local num = source:getMark("@orange")
+	if source:getHp() <= 2 then num = num - 1 end
+	
+	self:sort(self.friends_noself, "hp")
+	
+	for _, p in pairs(self.friends_noself) do
+		if targets:length() >= num then break end
+		if p:getMark("@orange") == 0 then
+			targets:append(p)
+		end
+	end
+	self:log("targets2:"..targets:length())
+	if targets:length() > 0 and targets:length() <= source:getMark("@orange") then
+		use.card = card
+		if use.to then use.to = targets end
+	end
 end

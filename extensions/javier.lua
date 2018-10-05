@@ -45,6 +45,8 @@ xiahoushi = sgs.General(extension, "xiahoushi", "shu","3", false)
 simalang = sgs.General(extension, "simalang", "wei" ,"3")
 panzhangmazhong = sgs.General(extension, "panzhangmazhong", "wu", "4")
 zhugeke = sgs.General(extension, "zhugeke", "wu", "3")
+luji = sgs.General(extension, "luji", "wu", "3")
+zhugedan = sgs.General(extension, "zhugedan", "wei", "4")
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -126,6 +128,297 @@ end
 --===========================================技能区============================================--
 
 --**********智包**********-----
+
+-----陆绩-----
+
+huaijv = sgs.CreateTriggerSkill{
+	name = "huaijv",
+	events = {sgs.EventPhaseStart},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(self, event, room, player, data)
+		if player and player:isAlive() and player:hasSkill(self:objectName()) then	
+			if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if not player:hasShownSkill(self:objectName()) and room:askForSkillInvoke(player,self:objectName(),data) then
+			return true
+		end
+		if player:hasShownSkill(self:objectName()) then
+			room:notifySkillInvoked(player, self:objectName())
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		player:gainMark("@orange")
+	end
+}
+huaijvDraw = sgs.CreateTriggerSkill{
+	name = "#huaijv_draw",
+	global = true,
+	events = {sgs.DrawNCards},
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive())then return "" end
+		if player:getMark("@orange") > 0 and player:getHandcardNum() < player:getHp() then return self:objectName() end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		return true
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke("huaijv")
+		local luji = room:findPlayerBySkillName("huaijv")
+		room:doAnimate(1, luji:objectName(), player:objectName())
+		local value = data:toInt()
+		local new_value = value + 1
+		data:setValue(new_value)
+	end
+}
+huaijvDamageInflicted = sgs.CreateTriggerSkill{
+	name = "#huaijv_damageInflicted",
+	global = true,
+	events = {sgs.DamageInflicted, sgs.Damaged},
+	can_trigger = function(self, event, room, player, data)
+		if event == sgs.DamageInflicted then
+			local damage = data:toDamage()
+			if damage.to and damage.to:isAlive() then 
+				if damage.to:getMark("@orange") > 0 then
+					return self:objectName(), damage.to
+				end
+			end
+		elseif event == sgs.Damaged and player:getMark("@orange") > 0 then
+			player:loseMark("@orange")
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		return true
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		room:broadcastSkillInvoke("huaijv")
+		local luji = room:findPlayerBySkillName("huaijv")
+		local damage = data:toDamage()
+		if damage.damage > 1 then
+			local msg = sgs.LogMessage()
+			msg.type, msg.from, msg.arg = "#huaijv", luji, damage.damage
+			room:sendLog(msg)
+		end
+		room:doAnimate(1, luji:objectName(), player:objectName())
+		damage.damage = 1
+		data:setValue(damage)
+		return false
+	end,
+}
+huaijvDying = sgs.CreateTriggerSkill{
+	name = "#huaijv_dying",
+	global = true,
+	events = {sgs.Dying},
+	can_trigger = function(self, event, room, player, data)
+		local dying = data:toDying()
+		if dying.who:getMark("@orange") > 0 then
+			return self:objectName(), dying.who
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		return true
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		if ask_who:getHp() > 0 then return false end
+		room:broadcastSkillInvoke("huaijv")
+		local luji = room:findPlayerBySkillName("huaijv")
+		room:doAnimate(1, luji:objectName(), player:objectName())
+		local num = 1 - ask_who:getHp()
+		ask_who:loseAllMarks("@orange")
+		local recover = sgs.RecoverStruct()
+		recover.who = ask_who
+		recover.recover = num
+		room:recover(ask_who, recover)
+		return false
+	end,
+}
+yiliCard = sgs.CreateSkillCard{
+	name = "yiliCard",
+	skill_name = "yili",
+	mute = true,
+	filter = function(self, selected, to_select)
+		if #selected >= sgs.Self:getMark("@orange") then return false end
+		return to_select:getMark("@orange") == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	end,
+	on_use = function(self, room, source, targets)
+		room:broadcastSkillInvoke("yili")
+		source:loseMark("@orange", #targets)
+		for _, p in pairs(targets) do
+			p:gainMark("@orange")
+		end
+	end,
+}
+yili = sgs.CreateZeroCardViewAsSkill{
+	name = "yili",
+	view_as = function(self) 
+		local card = yiliCard:clone()
+		card:setShowSkill(self:objectName())
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@orange") > 0
+	end
+}
+zhenglunCard = sgs.CreateSkillCard{
+	name = "zhenglunCard",
+	skill_name = "zhenglun",
+	mute = true,
+	target_fixed = true,
+	on_use = function(self, room, source, targets)
+		room:broadcastSkillInvoke("zhenglun")
+		room:loseHp(source, 1)
+		source:gainMark("@orange")
+		if source:getMark("@orange") <= source:getMaxHp() then
+			source:drawCards(1)
+		end
+	end,
+}
+zhenglun = sgs.CreateZeroCardViewAsSkill{
+	name = "zhenglun",
+	view_as = function(self) 
+		local card = zhenglunCard:clone()
+		card:setShowSkill(self:objectName())
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:usedTimes("#zhenglunCard") < 2
+	end
+}
+luji:addSkill(huaijv)
+luji:addSkill(huaijvDraw)
+luji:addSkill(huaijvDamageInflicted)
+luji:addSkill(huaijvDying)
+luji:addSkill(yili)
+luji:addSkill(zhenglun)
+sgs.insertRelatedSkills(extension, "huaijv", "#huaijv_draw")
+sgs.insertRelatedSkills(extension, "huaijv", "#huaijv_damageInflicted")
+sgs.insertRelatedSkills(extension, "huaijv", "#huaijv_dying")
+
+-----诸葛诞-----
+
+gongao = sgs.CreateTriggerSkill{
+	name = "gongao",
+	events = {sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.EventLoseSkill},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(self, event, room, player, data)	
+		if player and player:isAlive() and player:hasSkill(self:objectName()) then
+			local phase = player:getPhase()
+			if event == sgs.EventPhaseStart and phase == sgs.Player_Play then
+				if player:getHandcardNum() > 1 then
+					return self:objectName()
+				end
+			elseif event == sgs.EventPhaseEnd and phase == sgs.Player_Play then
+				return self:objectName()
+			end
+			if event == sgs.EventPhaseEnd and phase == sgs.Player_Finish then 
+				sendMsg(room, ".."..player:getPile("gong"):length())
+				if player:getPile("gong"):length() > 0 then
+					return self:objectName()
+				end
+			end
+		end
+		if event == sgs.EventLoseSkill and data:toString() == self:objectName() then
+			player:clearOnePrivatePile("gong")
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if not player:hasShownSkill(self:objectName()) and room:askForSkillInvoke(player,self:objectName(),data) then
+			return true
+		end
+		if player:hasShownSkill(self:objectName()) then
+			room:notifySkillInvoked(player, self:objectName())
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		local num = math.floor(player:getHandcardNum() / 2)
+		if event == sgs.EventPhaseStart then
+			room:broadcastSkillInvoke(self:objectName())
+			local exc_card = room:askForExchange(player, self:objectName(), num, num, "gongaoExchange:::"..num, "", ".|.|.|hand")
+			if not exc_card then
+				exc_card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+				for p = 0, num-1, 1 do
+					exc_card:addSubcard(player:getHandcards():at(p))
+				end
+			end
+			player:addToPile("gong", exc_card:getSubcards(), false)
+			exc_card:deleteLater()
+		elseif event == sgs.EventPhaseEnd then
+			if player:getPhase() == sgs.Player_Play then
+				if player:getHandcardNum() > 1 then
+					room:broadcastSkillInvoke(self:objectName())
+					local phases = sgs.PhaseList()
+					phases:append(sgs.Player_Play)
+					player:play(phases)
+				else
+					local phases = sgs.PhaseList()
+					phases:append(sgs.Player_Discard)
+					phases:append(sgs.Player_Finish)
+					player:play(phases)
+				end
+			elseif player:getPhase() == sgs.Player_Finish then
+				room:broadcastSkillInvoke(self:objectName())
+				local to_draw = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+				for _, c in sgs.qlist(player:getPile("gong")) do
+					local ccc = sgs.Sanguosha:getCard(c)
+					to_draw:addSubcard(ccc)
+				end
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), player:objectName(), self:objectName(),"")
+				room:moveCardTo(to_draw, player, sgs.Player_PlaceHand, reason)
+			end
+		end
+		return false
+	end
+}
+weizhong = sgs.CreateTriggerSkill{
+	name = "weizhong",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.Damaged},
+	can_trigger = function(self, event, room, player, data)	
+		if player and player:isAlive() and player:hasShownOneGeneral() then
+			local zhugedan = room:findPlayersBySkillName(self:objectName())
+			for _, p in sgs.qlist(zhugedan) do 
+				if p:hasShownOneGeneral() then
+					if player:objectName() == p:objectName() or (player:getKingdom() == p:getKingdom() and player:getRole() ~= "careerist" and p:getRole() ~= "careerist") then 
+						if p:getHandcardNum() < p:getMaxHp() then
+							return self:objectName(), p
+						end
+					end
+				end
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if not ask_who:hasShownSkill(self:objectName()) and room:askForSkillInvoke(ask_who,self:objectName(),data) then
+			return true
+		end
+		if ask_who:hasShownSkill(self:objectName()) then
+			room:notifySkillInvoked(ask_who, self:objectName())
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		ask_who:drawCards(1)
+		return false
+	end
+}
+zhugedan:addSkill(gongao)
+zhugedan:addSkill(weizhong)
 
 -----诸葛恪-----
 aocaiChooseCard = sgs.CreateSkillCard{
@@ -707,6 +1000,7 @@ xiahoushi:addSkill(qiaoshi)
 xiahoushi:addSkill(yanyu)
 xiahoushi:addSkill(yanyu_give)
 sgs.insertRelatedSkills(extension, "yanyu", "#yanyu_give")
+
 -----曹冲-----
 
 function chengxiangAsMovePattern(selected, to_select)
@@ -7894,6 +8188,31 @@ sgs.LoadTranslationTable{
 	[":duwu"] = " 出牌阶段限一次，你可以选择你攻击范围内的一名其他角色并弃置X张牌（X为该角色的手牌数），然后对其造成1点伤害。",
 	["$duwu1"] = "",
 	["$duwu2"] = "",
+	["luji"] = "陆绩",
+	["#luji"] = "怀橘遗亲",
+	["~luji"] = "恨不能见，车同轨，书同文……",
+	["huaijv"] = "怀橘",
+	[":huaijv"] = "锁定技，你的回合开始时，若你的“橘”标记个数不超过你的体力上限，你获得一个“橘”标记。（有“橘”标记的角色获得以下效果：受到伤害时，伤害数最多为1点；受到伤害后，移去一枚“橘”标记；摸牌阶段开始时，若手牌数小于体力值，摸牌数+1；濒死时，失去所有“橘”标记并将体力值回复至一点。）",
+	["$huaijv1"] = "情深舐犊，怀擢藏橘。",
+	["$huaijv2"] = "袖中怀绿桔，遗母报乳哺。",
+	["yili"] = "遗礼",
+	[":yili"] = "出牌阶段，你可以将你任意枚“橘”标记分配给等量其他没有“橘”标记的角色。",
+	["$yili1"] = "行遗礼之举，于不敬王者",
+	["$yili2"] = "遗失礼仪，则俱非议。",
+	["zhenglun"] = "整论",
+	[":zhenglun"] = "出牌阶段限两次，你可以失去一点体力并获得一个“橘”标记。若此时你的“橘”标记个数不超过你的体力上限，你摸一张牌。",
+	["$zhenglun1"] = "整论四海未泰，修文德以平。",
+	["$zhenglun2"] = "今论者不务道德怀取之术，而惟尚武，窃所未安。",
+	["zhugedan"] = "诸葛诞",
+	["#zhugedan"] = "严毅威重",
+	["~zhugedan"] = "诸葛一氏定会为我复仇！",
+	["gongao"] = "功獒",
+	[":gongao"] = "锁定技，你的出牌阶段开始时，你需要将一半的手牌（向下取整）置于武将牌上，称为“功”。出牌阶段结束后，若你的手牌数大于1，你执行一个额外的出牌阶段。你的回合结束后，你获得武将牌上所有的“功”。",
+	["$gongao1"] = "恪尽职守，忠心事主。",
+	["$gongao2"] = "攻城拔寨，建功立业。",
+	["weizhong"] = "威重",
+	[":weizhong"] = "锁定技，一名角色受到伤害后，若该角色是你或者与你势力相同，且你的手牌数小于你的体力上限，你摸一张牌。",
+	["$weizhong"] = "定当夷司马氏三族！",
 	
 	--加强包--
 	["lizhan"] = "励战",
@@ -8077,6 +8396,7 @@ sgs.LoadTranslationTable{
 	["@@aocai"] = "傲才",
 	["@aocai"] = "你可以使用/打出牌堆顶的一张牌。",
 	["#aocai"] = "傲才",
+	["gongaoExchange"] = "你需将 %arg 张手牌置于武将牌上",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
@@ -8123,6 +8443,7 @@ sgs.LoadTranslationTable{
 	["fu"] = "伏",
 	["shouxiPile"] = "玺",
 	["stars"] = "星",
+	["gong"] = "功",
 -----mark-----
 	["@lead"] = "锋",
 	["@yaowu"] = "耀武",
@@ -8130,12 +8451,14 @@ sgs.LoadTranslationTable{
 	["@xun"] = "训",
 	["@fulin"] = "腹麟",
 	["@duoshiMark"] = "度势",
+	["@orange"] = "橘",
 	
 	
 	
 	["#message"] = "%arg",
 	["#messagefrom"] = "%from %arg",
 	["#xinjimsg"] = "%from 于当前出牌阶段与%to 的距离视为1",
+	["#huaijv"] = "因“橘”标记的效果，伤害由 %arg 点降至1点",
 	
 	
 	
