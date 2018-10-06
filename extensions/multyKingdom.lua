@@ -639,18 +639,28 @@ machao_qun:addCompanion("mateng")
 
 -----姜维*魏-----
 
+function zhanxingPattern(selected, to_select)
+	return true --to_select:hasFlag("zhanxing_flag")
+end
 zhanxing = sgs.CreateTriggerSkill{
 	name = "zhanxing",
 	frequency = sgs.Skill_Compulsory,
 	relate_to_place = "head",
-	events = {sgs.BeforeCardsMove},
+	events = {sgs.CardsMoveOneTime},
 	can_trigger = function(self, event, room, player, data)
 		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
 		local move = data:toMoveOneTime()
 		if not move.to or player:objectName() ~= move.to:objectName() then return "" end
-		if not move.from_places:contains(sgs.Player_PlaceHand) and not move.from_places:contains(sgs.Player_PlaceEquip) and (move.to_place == sgs.Player_PlaceHand) then
-			return self:objectName()
+		--if not move.from_places:contains(sgs.Player_PlaceHand) and not move.from_places:contains(sgs.Player_PlaceEquip) and (move.to_place == sgs.Player_PlaceHand) then
+		if move.to_place == sgs.Player_PlaceHand then
+			if not sgs.Sanguosha:getCard(move.card_ids:first()):hasFlag("zhanxing_flag") then 
+				return self:objectName()
+			end
 		end
+		--[[for _, c in sgs.qlist(move.card_ids) do 
+			local ccc = sgs.Sanguosha:getCard(c)
+			room:setCardFlag(ccc, "-zhanxing_flag", player)
+		end--]]
 		return ""
 	end,
 	on_cost = function(self, event, room, player, data, ask_who)
@@ -663,7 +673,7 @@ zhanxing = sgs.CreateTriggerSkill{
 		return false
 	end,
 	on_effect = function(self, event, room, player, data, ask_who)
-		room:broadcastSkillInvoke(self:objectName())
+		--[[room:broadcastSkillInvoke(self:objectName())
 		room:notifySkillInvoked(player, self:objectName())
 		local move = data:toMoveOneTime()
 		local notify_visible_list = sgs.IntList()
@@ -688,7 +698,77 @@ zhanxing = sgs.CreateTriggerSkill{
 			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), nil)
 			room:throwCard(dummy, reason, nil)
 		end
-		dummy:deleteLater()
+		dummy:deleteLater()--]]
+		
+		--[[room:broadcastSkillInvoke(self:objectName())
+		room:notifySkillInvoked(player, self:objectName())
+		local move = data:toMoveOneTime()
+		local notify_visible_list = sgs.IntList()
+		notify_visible_list:append(-1)
+		local num = move.card_ids:length()
+		local get_card_ids = move.card_ids
+		local card_ids = room:getNCards(num, true)
+		local result = room:askForMoveCards(player, card_ids, get_card_ids, true, "zhanxing", "", self:objectName(), num, num, false, false, notify_visible_list)
+		local to_draw = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		local to_discard = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		for _, c in sgs.qlist(result.bottom) do
+			if not get_card_ids:contains(c) then
+				to_draw:addSubcard(c)
+			end
+			local ccc = sgs.Sanguosha:getCard(c)
+			room:setCardFlag(ccc, "zhanxing_flag", player)
+		end
+		for _, c in sgs.qlist(result.top) do
+			--if get_card_ids:contains(c) then
+				to_discard:addSubcard(c)
+			--end
+		end
+		if to_draw:getSubcards():length() > 0 then
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), player:objectName(), self:objectName(),"")
+			room:moveCardTo(to_draw, player, sgs.Player_PlaceHand, reason)
+		end
+		if to_discard:getSubcards():length() > 0 then
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_THROW, player:objectName(), player:objectName(), self:objectName(),"")
+			room:moveCardTo(to_discard, player, sgs.Player_Discard, reason)
+			--room:throwCard(to_discard, player)
+		end--]]
+		
+		room:broadcastSkillInvoke(self:objectName())
+		room:notifySkillInvoked(player, self:objectName())
+		local move = data:toMoveOneTime()
+		local num = move.card_ids:length()
+		local card_ids = room:getNCards(num, true)
+		local to_draw = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		for _,id in sgs.qlist(card_ids) do
+			to_draw:addSubcard(id)
+			room:setCardFlag(sgs.Sanguosha:getCard(id), "zhanxing_flag", player)
+		end
+		for _,id in sgs.qlist(move.card_ids) do
+			room:setCardFlag(sgs.Sanguosha:getCard(id), "zhanxing_flag", player)
+		end
+		local prohibit = ""
+		local prohibit_list = {}
+		for _, card in sgs.qlist(player:getHandcards()) do 
+			if not move.card_ids:contains(card:getId()) and not card_ids:contains(card:getId()) then
+				if prohibit ~= "" then
+					prohibit = prohibit.."+"
+				end
+				prohibit = prohibit.."^"..card:toString()
+				table.insert(prohibit_list, card:getId())
+			end
+		end
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), player:objectName(), self:objectName(),"")
+		room:moveCardTo(to_draw, player, sgs.Player_PlaceHand, reason)
+		local discard_card = room:askForExchange(player, self:objectName(), num, num, "zhanxing-discard:::"..num, "", prohibit)
+		if not discard_card then
+			discard_card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			for _, c in sgs.qlist(player:getHandcards()) do 
+				if c:hasFlag("zhanxing_flag") then
+					discard_card:addSubcard(c)
+				end
+			end
+		end
+		room:throwCard(discard_card, player)
 	end
 }
 kunfen = sgs.CreateTriggerSkill{
@@ -1002,13 +1082,14 @@ sgs.LoadTranslationTable{
 	["$kunfen1"] = "纵使困顿难行，亦当砥砺奋进！",
 	["$kunfen2"] = "心数虚实，众将切勿惫怠！",
 	["zhanxing"] = "占星",
-	[":zhanxing"] = "主将技，锁定技，当你将要从牌堆获得牌时，你观看这些牌与牌堆顶等量的牌，你选择获得其中x张牌，其余牌弃置（x为你将要获得的牌数）。",
+	[":zhanxing"] = "主将技，锁定技，当你获得牌时，你摸x张牌，然后你从这些牌中弃置x张牌（x为你获得的牌数）。",
 	["$zhanxing1"] = "得遇丞相，再生之德！",
 	["$zhanxing2"] = "丞相大义，维岂有不从之理！",
 	["tiaoxin-slash"] = "请对 %src 使用一张【杀】，否则其弃置你一张牌",
-	["@zhanxing"] = "获得其中一半的牌",
+	["@zhanxing"] = "替换其中的牌",
 	["zhanxing#up"] = "弃置",
 	["zhanxing#down"] = "获取",
+	["zhanxing-discard"] = "请弃置 %arg 张牌",
 	
 	["sunshangxiang_shu"] = "孙尚香",
 	["#sunshangxiang_shu"] = "乱世巾帼",
