@@ -5741,7 +5741,7 @@ sgs.ai_skill_use_func["#xinjiCard"] = function(card, use, self)
 		end
 	end
 	if to then
-		use.card = sgs.Card_Parse("#xinjiCard:"..need_card..":&xinji->" .. to:objectName())
+		use.card = sgs.Card_Parse("#xinjiCard:"..need_card..":&xinji")
 		local targets = sgs.SPlayerList()
 		targets:append(to)
 		if use.to then use.to = targets end
@@ -6060,8 +6060,57 @@ sgs.ai_view_as.aocai = function(card, player, card_place)
 		return ("%s:aocai[%s:%s]=%d&aocai"):format(card_need:objectName(), suit, number, card_id)
 	end
 end
+local duwu_skill = {}
+duwu_skill.name = "duwu"
+table.insert(sgs.ai_skills, duwu_skill)
+duwu_skill.getTurnUseCard = function(self)
+	if self.player:hasUsed("#duwuCard") or self.player:isNude() then return end
+	return sgs.Card_Parse("#duwuCard:.:&duwu")
+end
+sgs.ai_skill_use_func["#duwuCard"] = function(card, use, self)
+	local room = self.room
+	self:sort(self.enemies, "hp")
+	local to
+	local min_num = 999
+	local handCardsNum = self.player:getHandcardNum() + self.player:getEquips():length()
+	for _, p in pairs(self.enemies) do 
+		if p:objectName() == self.player:objectName() or p:getHandcardNum() > 3 then continue end
+		if not to and p:getHandcardNum() <= handCardsNum then 
+			to = p
+			min_num = p:getHandcardNum() + p:getHp()
+		elseif to then
+			if p:getHandcardNum() + p:getHp() < min_num then
+				if p:getHandcardNum() == 0 or (p:getHandcardNum() > 0 and p:getHandcardNum() < handCardsNum - 2) then
+					min_num = p:getHandcardNum() + p:getHp()
+					to = p 
+				end
+			end
+		end
+	end
+	local need_card = {}
+	if to then
+		local cards = self.player:getCards("he")
+		cards = sgs.QList2Table(cards)
+		self:sortByUseValue(cards,true)
+		for _, c in pairs(cards) do
+			if #need_card >= to:getHandcardNum() then break end
+			if not c:isKindOf("Peach") then
+				table.insert(need_card, c:getEffectiveId())
+			end
+		end
+	end
+	if to and #need_card == to:getHandcardNum() then
+		local targets = sgs.SPlayerList()
+		targets:append(to)
+		if targets:length() == 1 then
+			use.card = sgs.Card_Parse("#duwuCard:"..table.concat(need_card, "+")..":&duwu")
+			if use.to then use.to = targets end
+		end
+	end
+end	
 
 -----严畯-----
+
 sgs.ai_skill_invoke.guanchao = function(self, data)
 	return true
 end

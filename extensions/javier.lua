@@ -768,6 +768,7 @@ duwu = sgs.CreateViewAsSkill{
 		local card = duwuCard:clone()
 		if #cards == 0 then return false end
 		card:setShowSkill(self:objectName())
+		card:setSkillName(self:objectName())
 		for _, c in ipairs(cards) do
 			card:addSubcard(c)
 		end
@@ -781,6 +782,7 @@ duwuCard = sgs.CreateSkillCard{
 	name = "duwuCard",
 	skill_name = "duwu",
 	will_throw = true,
+	mute = true,
 	filter = function(self, targets, to_select, player)
 		local attackRange = false
 		if player:getWeapon() and self:getSubcards():contains(player:getWeapon():getId()) then
@@ -8402,7 +8404,7 @@ sgs.LoadTranslationTable{
 	["guanchao"] = "观潮",
 	[":guanchao"] = "出牌阶段开始时，你可以进行判定，若本回合你以此法判定的所有判定牌点数呈严格递增或严格递减，你重复此流程，否则你弃置该判定牌并获得所有其他因此法判定的判定牌。你于出牌阶段结束后弃置所有因此法获得的牌。",
 	["xunxian"] = "逊贤",
-	[":xunxian"] = "当你使用牌时，你可以将一张相同花色的牌交给一名其他角色",
+	[":xunxian"] = "当你使用牌时，你可以将一张相同花色的牌交给一名其他角色。",
 	--加强包--
 	["lizhan"] = "励战",
 	[":lizhan"] = "副将技，此武将牌上单独的阴阳鱼个数-1，回合结束时，你可以令任意名已受伤的角色摸一张牌。",
