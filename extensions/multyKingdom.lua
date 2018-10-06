@@ -281,6 +281,7 @@ lianpian = sgs.CreateTriggerSkill{
 						toObjectName_str = toObjectName_str .. "+" .. p:objectName()
 					end
 				end
+				if player:getTag("lianpianTag"):toString() == "" or player:getTag("lianpianTag") == nil then can_invoke = false end
 				player:setTag("lianpianTag", sgs.QVariant(toObjectName_str))
 				if can_invoke then
 					return self:objectName()

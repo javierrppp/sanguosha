@@ -26,7 +26,7 @@ shalu = sgs.CreateTriggerSkill{
 				local intelligence = 0
 				local health = 0
 				local general1 = p:getGeneralName()
-				sendMsg(room, "general:" .. general1)
+				--sendMsg(room, "general:" .. general1)
 				if head_value[general1] and #head_value[general1] > 0 then
 					max_hp = max_hp + head_value[general1][1]
 					offense = offense + head_value[general1][2]
@@ -40,7 +40,7 @@ shalu = sgs.CreateTriggerSkill{
 					intelligence = intelligence + defult_value[4]
 					health = health + defult_value[5]
 				end
-				sendMsg(room, "head:" .. max_hp)
+				--sendMsg(room, "head:" .. max_hp)
 				local general2 = p:getGeneral2Name()
 				if deputy_value[general2] and #deputy_value[general2] > 0 then
 					max_hp = max_hp + deputy_value[general2][1]
@@ -55,7 +55,7 @@ shalu = sgs.CreateTriggerSkill{
 					intelligence = intelligence + defult_value[4]
 					health = health + defult_value[5]
 				end
-				sendMsg(room, "deputy:" .. max_hp)
+				--sendMsg(room, "deputy:" .. max_hp)
 				local mhp = sgs.QVariant()
 				mhp:setValue(max_hp)
 				room:setPlayerProperty(p, "maxhp", mhp)

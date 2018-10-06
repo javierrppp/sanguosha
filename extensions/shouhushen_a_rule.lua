@@ -8,12 +8,12 @@ rule = sgs.CreateTriggerSkill{
 	events = {sgs.GameStart, sgs.GeneralShown, sgs.Death} ,
 	on_effect = function(self, event, room, player, data,ask_who)
 		if event == sgs.GameStart then
-			for key,value in pairs(multy_kingdom) do
+			--[[for key,value in pairs(multy_kingdom) do
 				sendMsg(room, ".."..table.concat(value, "+"))
 			end
 			sendMsg(room, "hashNum:" .. #hash)
 			local general_name = table.concat(hash, "+")
-			sendMsg(room, "?" .. general_name)
+			sendMsg(room, "?" .. general_name)--]]
 		end
 		if event == sgs.GeneralShown then
 			if not player or player:isDead() then return false end

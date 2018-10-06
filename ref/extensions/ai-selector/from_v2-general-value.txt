@@ -1,0 +1,68 @@
+ZhouTai_13							9
+HuaXiong							7
+YuanShu_Renew							5
+ZhouTai_15							8.7
+
+CaoCao_LB							8.2
+SiMaYi_LB							8.2
+XiaHouDun_LB							5
+ZhangLiao_LB							6
+XuChu_LB							6.4
+GuoJia_LB							8
+LiuBei_LB							7
+GuanYu_LB							7.8
+ZhangFei_LB							8.2
+ZhaoYun_LB							5
+MaChao_LB							7
+XuShu_LB							7
+GanNing_LB							7.2
+LyuMeng_LB							6
+HuangGai_LB							9
+ZhouYu_LB							7
+DaQiao_LB							7.4
+LuXun_LB							6
+HuaTuo_LB							6
+LyuBu_LB							4
+GongSunZan							5
+
+ShenGuanYu							6
+ShenLyuMeng							7
+ShenZhouYu							5
+ShenZhuGeLiang							8
+ShenCaoCao							9
+ShenLyuBu							6
+
+CaoZhi								8
+ChenGong							7
+
+CaoChong							8
+FuHuangHou							4
+GuanPing							8
+GuoHuai								5
+JianYong							5
+LiRu								6
+LiuFeng								8
+ManChong							7
+PanZhangMaZhong							4
+YuFan								6
+ZhuRan								4
+
+CaiFuRen							8
+
+ZhangNi								4
+
+ZhangRang							8
+
+GuanYu_JSP							4
+
+MaDai_RE							6.5
+XuSheng_RE							5
+
+TaDun								5
+GuanSuo								8
+LiTong								6
+MiZhu								6
+BuZhi								8
+
+MaChao_OL							6
+ZhangRang_OL							7

@@ -326,7 +326,7 @@ end
 sgs.ai_skill_playerchosen["jueqing"] = function(self, targets) 
     local source = self.player
 	local room = source:getRoom()
-	room:getThread():delay(750)
+	room:getThread():delay(450)
 	local damage = source:getTag("jueqingTag"):toDamage()
 	local to = damage.to
 	local target = nil
@@ -5976,7 +5976,6 @@ end
 sgs.ai_skill_use_func["#yiliCard"] = function(card, use, self)
 	local room = self.room
 	local targets = sgs.SPlayerList()
-	self:log("targets:"..targets:length())
 	local source = self.player
 	local num = source:getMark("@orange")
 	if source:getHp() <= 2 then num = num - 1 end
@@ -5989,9 +5988,129 @@ sgs.ai_skill_use_func["#yiliCard"] = function(card, use, self)
 			targets:append(p)
 		end
 	end
-	self:log("targets2:"..targets:length())
 	if targets:length() > 0 and targets:length() <= source:getMark("@orange") then
 		use.card = card
 		if use.to then use.to = targets end
 	end
+end
+
+-----诸葛恪-----
+
+sgs.ai_skill_invoke.aocai = function(self, data)
+	return true
+end
+sgs.ai_skill_use["@@aocai"] = function(self, prompt)
+	local source = self.player
+	local patterns = source:property("aocaiPattern"):toString():split("+")
+	if table.contains(patterns, "slash") then
+		table.insert(patterns,"fire_slash")
+		table.insert(patterns,"thunder_slash")
+	end
+	local card_need
+	local aocaiCards = source:property("aocaiPileCard"):toString():split("+")
+	for _, id in pairs(aocaiCards) do 
+		local card = sgs.Sanguosha:getCard(id)
+		if table.contains(patterns, sgs.Sanguosha:getCard(tonumber(id)):objectName()) then
+			card_need = card:getEffectiveId()
+			break
+		end
+	end
+	if card_need then
+	    local card_str = "#aocaiCard:"..card_need..":&aocai"
+		return card_str	
+	end
+	return "."
+end
+sgs.ai_view_as.aocai = function(card, player, card_place)
+	local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
+	local names = pattern:split("+")
+	if player:getPhase() ~= sgs.Player_NotActive then return nil end
+	if table.contains(names, "slash") then
+		table.insert(names,"fire_slash")
+		table.insert(names,"thunder_slash")
+	end
+	local card_need
+	local aocaiCards = player:property("aocaiPileCard"):toString():split("+")
+	for _, id in pairs(aocaiCards) do 
+		local card = sgs.Sanguosha:getCard(id)
+		if table.contains(names, sgs.Sanguosha:getCard(tonumber(id)):objectName()) then
+			card_need = card
+			break
+		end
+	end
+	if not card_need then
+		local dying_player = player:getRoom():getCurrentDyingPlayer()
+		if dying_player then
+			local need_class = {}
+			if dying_player:objectName() == player:objectName() then need_class = {"peach", "analeptic"}
+			elseif dying_player:objectName() ~= player:objectName() then need_class = {"peach"} end
+			for _, id in pairs(aocaiCards) do 
+				local card = sgs.Sanguosha:getCard(id)
+				if table.contains(need_class, sgs.Sanguosha:getCard(tonumber(id)):objectName()) then
+					card_need = card
+					break
+				end
+			end
+		end
+	end
+	if card_need then
+		local suit = card_need:getSuit()
+		local number = card_need:getNumber()
+		local card_id = card_need:getId()
+		return ("%s:aocai[%s:%s]=%d&aocai"):format(card_need:objectName(), suit, number, card_id)
+	end
+end
+
+-----严畯-----
+sgs.ai_skill_invoke.guanchao = function(self, data)
+	return true
+end
+sgs.ai_skill_use["@@xunxian"] = function(self, prompt)
+	local source = self.player
+	if #self.friends_noself == 0 then return "." end
+	local card_ids = source:property("guanchaoProp"):toString():split("+")
+	local card_id = source:property("xunxianProp"):toInt()
+	local usecard = sgs.Sanguosha:getCard(card_id)
+	local suit = usecard:getSuit()
+	local cards = sgs.QList2Table(source:getCards("he"))
+	self:sortByUseValue(cards,true)
+	local will_be_discard = false
+	local need_card = nil
+	for _, card in pairs(cards) do
+		if card:getSuit() == suit and card:getId() ~= card_id and table.contains(card_ids, tostring(card:getId())) then
+			need_card = card:getEffectiveId()
+			will_be_discard = true
+			break
+		end
+	end
+	if not need_card then
+		for _, card in pairs(cards) do
+			if card:getSuit() == suit and card:getId() ~= card_id then 
+				if not self:isWeak(source) or (self:isWeak(source) and (self:getCardsNum(usecard:objectName()) > 1 or (self:getCardsNum(usecard:objectName()) == 1 
+					and self:getUseValue(usecard) < 5))) then
+					need_card = card:getEffectiveId()
+					break
+				end
+			end
+		end
+	end
+	local target
+	local candidate = self.friends_noself[1]
+	self:sort(self.friends_noself, "hp")
+	if will_be_discard then target = candidate
+	else
+		if not self:isWeak(source) or (self:isWeak(source) and (candidate:getHandcardNum() < source:getHandcardNum() or candidate:getHp() < source:getHp())) then
+			target = candidate
+		end
+		if not target then
+			if source:getHandcardNum() > source:getMaxCards() + 2 then
+				target = candidate
+			end
+		end
+	end
+	if target and need_card then
+	    local card_str = "#xunxianCard:"..need_card..":&xunxian->" .. target:objectName()
+		return card_str	
+	end
+	return "."
 end
