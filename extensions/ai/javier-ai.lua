@@ -6411,7 +6411,7 @@ sgs.ai_skill_cardask["@renwang_invoke"] = function(self, data, pattern, target, 
 	self:sortByUseValue(cards, true)
 	for _,card in pairs(cards) do
 		if card:isKindOf("Peach") then
-			for _, p in sgs.pairs(self.friends) do 
+			for _, p in pairs(self.friends) do 
 				if p:getHp() <= 2 then
 					return card:toString()
 				end

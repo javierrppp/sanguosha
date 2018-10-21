@@ -7198,6 +7198,7 @@ renwangSlash = sgs.CreateTriggerSkill{
 		return false
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
+		if ask_who:getPile("renwang"):length() == 0 or not sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first()):isKindOf("Slash") then return false end
 		room:broadcastSkillInvoke("renwang")
 		local card = sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first())
 		if not card:isKindOf("Slash") then return false end
@@ -7230,6 +7231,7 @@ renwangJink = sgs.CreateTriggerSkill{
 		return true
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
+		if player:getPile("renwang"):length() == 0 or not sgs.Sanguosha:getCard(player:getPile("renwang"):first()):isKindOf("Jink") then return false end
 		room:broadcastSkillInvoke("renwang")
 		local use = data:toCardUse()
 		local dummy = sgs.DummyCard(player:getPile("renwang"))
@@ -7244,6 +7246,7 @@ renwangJink = sgs.CreateTriggerSkill{
 			use.nullified_list = nullified_list
 			data:setValue(use)
 		end
+		ask_who:drawCards(1)
 	end
 }	
 renwangPeach = sgs.CreateTriggerSkill{
@@ -7279,6 +7282,7 @@ renwangPeach = sgs.CreateTriggerSkill{
 		return false
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
+		if ask_who:getPile("renwang"):length() == 0 or not sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first()):isKindOf("Peach") then return false end
 		room:broadcastSkillInvoke("renwang")
 		local dummy = sgs.DummyCard(ask_who:getPile("renwang"))
 		dummy:deleteLater()
@@ -7324,6 +7328,7 @@ renwangAnaleptic = sgs.CreateTriggerSkill{
 		return false
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
+		if ask_who:getPile("renwang"):length() == 0 or not sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first()):isKindOf("Analeptic") then return false end
 		room:broadcastSkillInvoke("renwang")
 		local dummy = sgs.DummyCard(ask_who:getPile("renwang"))
 		dummy:deleteLater()
@@ -7371,7 +7376,6 @@ renwangOther = sgs.CreateTriggerSkill{
 			if not use.card then return "" end
 			local id = use.card:getId()
 			for _, p in sgs.qlist(room:getAlivePlayers()) do 
-				sendMsg(room, "id2:" .. p:property("renwang_get_prop"):toInt())
 				if p:property("renwang_get_prop"):toInt() == id then
 					room:broadcastSkillInvoke("renwang")
 					room:doAnimate(1, p:objectName(), player:objectName())
@@ -7389,6 +7393,8 @@ renwangOther = sgs.CreateTriggerSkill{
 		return false
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
+		local card = sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first())
+		if ask_who:getPile("renwang"):length() == 0 or card:isKindOf("Slash") or card:isKindOf("Jink") or card:isKindOf("Analeptic") or card:isKindOf("Peach") then return false end
 		room:broadcastSkillInvoke("renwang")
 		if event == sgs.EventPhaseStart then
 			local dummy = sgs.DummyCard(ask_who:getPile("renwang"))
