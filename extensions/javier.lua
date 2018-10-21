@@ -39,7 +39,7 @@ maliang = sgs.General(extension, "maliang", "shu","3")
 xushi = sgs.General(extension, "xushi", "wu","3", false)
 wangji = sgs.General(extension, "wangji", "wei","3")
 caojie = sgs.General(extension, "caojie", "qun","3", false)
-chengong = sgs.General(extension, "chengong", "qun","3", false)
+chengong = sgs.General(extension, "chengong", "qun","3")
 caochong = sgs.General(extension, "caochong", "wei","3")
 xiahoushi = sgs.General(extension, "xiahoushi", "shu","3", false)
 simalang = sgs.General(extension, "simalang", "wei" ,"3")
@@ -57,6 +57,11 @@ lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
 caocao = sgs.General(extension1, "caocao", "wei","4",true,false,true) 
 weiyan = sgs.General(extension1, "weiyan", "shu","4",true,false,true)
 luxun = sgs.General(extension1, "luxun", "wu","3",true,false,true)
+zhaoyun = sgs.General(extension1, "zhaoyun", "shu","4",true,false,true)
+zhangfei = sgs.General(extension1, "zhangfei", "shu","4",true,false,true)
+xusheng = sgs.General(extension1, "xusheng", "wu","4",true,false,true)
+xiahouyuan = sgs.General(extension1, "xiahouyuan", "wei","4",true,false,true)
+xiahoudun = sgs.General(extension1, "xiahoudun", "wei","4",true,false,true)
 
 --**********猛包**********-----
 
@@ -1323,7 +1328,10 @@ shouxi = sgs.CreateTriggerSkill{
 				has = true
 			end
 		end
-		if has == true then return false end
+		if has == true then 
+			room:throwCard(id, player)
+			return false 
+		end
 		player:addToPile("shouxiPile", id) 
 		local use = data:toCardUse()
 		local nullified_list = use.nullified_list
@@ -6810,6 +6818,200 @@ zhaxiang = sgs.CreateTriggerSkill{
 		return false
 	end,
 }
+
+-----张飞-----
+
+zhangfei:addSkill("paoxiao")
+
+-----赵云-----
+
+longhun = sgs.CreateTriggerSkill{
+	name = "longhun",
+	frequency = sgs.Skill_NotFrequent,
+	relate_to_place = "head",
+	events = {sgs.CardResponded, sgs.CardUsed},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		if player:getPhase() ~= sgs.Player_NotActive then return end
+		if event == sgs.CardResponded then
+			local response = data:toCardResponse()
+			if response.m_isHandcard == false then return "" end
+		elseif event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if use.from:objectName() ~= player:objectName() then return "" end
+		end
+		return self:objectName()
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(ask_who,self:objectName(),data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		local card
+		if event == sgs.CardResponded then
+			local response = data:toCardResponse()
+			if response.m_isHandcard == false then return "" end
+			card = response.m_card
+		elseif event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if use.from:objectName() ~= player:objectName() then return "" end
+			card = use.card
+		end
+		
+		local id = room:getNCards(1):first()
+		local move = sgs.CardsMoveStruct(id, nil, sgs.Player_PlaceTable, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, player:objectName(), "longhun", ""))
+		room:moveCardsAtomic(move, true)
+		room:getThread():delay(1000)
+		local show_card = sgs.Sanguosha:getCard(id)
+		if show_card:getColor() == card:getColor() then
+			room:obtainCard(player, id)
+		else
+			room:throwCard(id, player)
+		end
+		return false
+	end
+}
+zhaoyun:addSkill("longdan")
+zhaoyun:addSkill(longhun)
+zhaoyun:addCompanion("liushan")
+zhaoyun:setHeadMaxHpAdjustedValue(-1)
+
+-----徐盛-----
+
+pojun = sgs.CreateTriggerSkill{
+	name = "pojun",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.TargetConfirmed},
+	can_trigger = function(self, event, room, player, data)
+		local use = data:toCardUse()
+		if not use.card:isKindOf("Slash") then return "" end
+		if player and not player:isDead() and use.from:hasSkill(self:objectName()) and use.to:contains(player) and not player:isNude() then
+			return self:objectName(), use.from:objectName()
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local to_data = sgs.QVariant()
+		to_data:setValue(player)
+		if room:askForSkillInvoke(ask_who,self:objectName(),to_data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		local to_throw = room:askForCardChosen(ask_who, player, "he", self:objectName(), false, sgs.Card_MethodDiscard)
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DISMANTLE, ask_who:objectName(), player:objectName(), self:objectName(), nil)
+		room:throwCard(sgs.Sanguosha:getCard(to_throw), reason, player, ask_who)
+		if sgs.Sanguosha:getCard(to_throw):isRed() then
+			player:drawCards(1)
+		end
+		return false
+	end
+}
+xusheng:addSkill("yicheng")
+xusheng:addSkill(pojun)
+xusheng:addCompanion("dingfeng")
+
+-----夏侯渊-----
+
+hubuVS = sgs.CreateViewAsSkill{
+	name = "hubu",
+	expand_pile = "#hubu",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		local Slashs = sgs.Self:property("hubuProp"):toString():split("+")
+		return #selected == 0 and table.contains(Slashs, tostring(to_select:getId()))
+	end,
+	view_as = function(self, cards)
+		return cards[1]
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "@@hubu"
+	end,
+	enabled_at_play = function(self, player)
+		return false
+	end
+}
+hubu = sgs.CreateTriggerSkill{
+	name = "hubu",
+	view_as_skill = hubuVS,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.Damaged},
+	can_preshow = true,
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
+		if player:isWounded() then
+			return self:objectName()
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(player,self:objectName(),data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		local lost_hp = player:getMaxHp() - player:getHp()
+		if lost_hp <= 0 then return false end
+		local ids = room:getNCards(lost_hp)
+		local move = sgs.CardsMoveStruct(ids, nil, sgs.Player_PlaceTable, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, player:objectName(), "hubu", ""))
+		room:moveCardsAtomic(move, true)
+		room:getThread():delay(500)
+		local slash_qlist = sgs.IntList()
+		local slash_list = {}
+		local discard_dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		for i=0, lost_hp-1, 1 do
+			local id = ids:at(i)
+			local card = sgs.Sanguosha:getCard(id)
+			if card:isKindOf("Slash") or card:isKindOf("FireSlash") or card:isKindOf("ThunderSlash") then
+				slash_qlist:append(id)
+				table.insert(slash_list, id)
+			else
+				discard_dummy:addSubcard(id)
+			end
+		end
+		local used_cards = sgs.IntList()
+		for i=0, slash_qlist:length() - 1, 1 do
+			room:setPlayerProperty(player, "hubuProp", sgs.QVariant(table.concat(slash_list, "+")))
+			room:notifyMoveToPile(player, slash_qlist, "hubu", sgs.Player_DrawPile, true, true)
+			local card = room:askForUseCard(player, "@@hubu", "@hubu-card")
+			room:notifyMoveToPile(player, slash_qlist, "hubu", sgs.Player_DrawPile, false, false)
+			if card then
+				for _, id in sgs.qlist(slash_qlist) do 
+					if card:getId() == id then
+						table.removeOne(slash_list, id)
+						room:setPlayerProperty(player, "hubuProp", sgs.QVariant(table.concat(slash_list, "+")))
+						used_cards:append(id)
+						break
+					end
+				end
+			else
+				room:setPlayerProperty(player, "hubuProp", sgs.QVariant(""))
+				break
+			end
+		end
+		for _, id in sgs.qlist(slash_qlist) do 
+			if not used_cards:contains(id) then
+				discard_dummy:addSubcard(id)
+			end
+		end
+		room:throwCard(discard_dummy, player)
+		return false
+	end,
+}
+xiahouyuan:addSkill("shensu")
+xiahouyuan:addSkill(hubu)
+
+-----夏侯惇-----
+
+xiahoudun:addSkill("ganglie")
+xiahoudun:addCompanion("xiahouyuan")
+
 local skillList = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("lizhan") then
 skillList:append(lizhan)
@@ -8199,8 +8401,6 @@ sgs.LoadTranslationTable{
 	["#caimao"] = "荆州水师",
 	["shuishi"] = "水师",
 	[":shuishi"] = "阵法技，若你是被围攻角色，围攻角色对你使用【杀】或【水淹七军】时，你可以弃置一张手牌令此牌对你无效；若你是围攻角色，你对被围攻角色使用【杀】或【水淹七军】造成伤害时，你可以令此伤害+1。",
-	["$shuishi1"] = "神速进击，攻敌不备！",
-	["$shuishi2"] = "你已经死啦！",
 	["duozhu"] = "夺主",
 	[":duozhu"] = "锁定技，当一名其他角色阵亡时，你将其装备区内所有你相应位置没有的装备置于你的装备区。<br /><font color=\"pink\">注：此技能优先级高于行殇。</font>",
 	["$duozhu1"] = "缺失",
@@ -8355,13 +8555,13 @@ sgs.LoadTranslationTable{
 	["duodao"] = "夺刀",
 	[":duodao"] = "当你受到【杀】造成的伤害后，你可以弃置一张牌，获得伤害来源装备区里的武器牌。",
 	["@duodao-get"] = "你可以弃置一张牌发动“夺刀”",
-	["$duodao1"] = "这刀岂是你配用的？",
-	["$duodao2"] = "夺敌兵刃，如断其臂！",
+	["$duodao1"] = "夺敌兵刃，如断其臂！",
+	["$duodao2"] = "这刀岂是你配用的？",
 	["anjian"] = "暗箭",
 	[":anjian"] = "锁定技，当你使用【杀】对目标角色造成伤害时，若你不在其攻击范围内，你令此伤害+1。",
 	["#anjianBuff"] = "%from 的“<font color=\"yellow\"><b>暗箭</b></font>”效果被触发，伤害从 %arg 点增加至 %arg2 点",
-	["$anjian1"] = "击其懈怠，攻其不备！",
-	["$anjian2"] = "哼，你满身都是破绽！",
+	["$anjian1"] = "哼，你满身都是破绽！",
+	["$anjian2"] = "击其懈怠，攻其不备！",
 	["zhugeke"] = "诸葛恪",
 	["#zhugeke"] = "雄才大略",
 	["~zhugeke"] = "",
@@ -8435,6 +8635,22 @@ sgs.LoadTranslationTable{
 	[":danqi"] = "副将技，此武将牌上单独的阴阳鱼个数-1，当你的红色牌造成伤害时，你可以弃置对方的一张牌，然后若你弃置的牌与你使用的该牌花色相同，你摸一张牌。",
 	["$danqi1"] = "单骑护嫂千里，只为桃园之义。",
 	["$danqi2"] = "独身远涉，赤心归国。",
+	["longhun"] = "龙魂",
+	[":longhun"] = "主将技，此武将牌上单独的阴阳鱼个数-1，你于回合外使用或打出手牌时，你可以展示牌堆顶的一张牌，若与你使用或打出的牌颜色相同，你获得之。",
+	["$longhun1"] = "常山赵子龙在此！",
+	["$longhun2"] = "能屈能伸，才是大丈夫。",
+	["tishen"] = "替身",
+	[":tishen"] = "副将技，此武将牌上单独的阴阳鱼个数-1，一名角色对你使用【杀】结算完毕后，若该【杀】未造成伤害，你获得该【杀】。",
+	["pojun"] = "破军",
+	[":pojun"] = "当你使用【杀】时，你可以弃置目标角色的一张牌，若该牌为红色，其摸一张牌。",
+	["$pojun1"] = "大军在此，尔等休想前进一步！",
+	["$pojun2"] = "敬请养精蓄锐。",
+	["hubu"] = "虎步",
+	[":hubu"] = "当你受到伤害后，你可以展示牌堆顶的x张牌，然后你可以使用其中任意张【杀】,并将其余牌弃置。（x为你已损失体力值）",
+	["$hubu1"] = "神速进击，攻敌不备！",
+	["$hubu2"] = "你已经死啦！",
+	["qingjian"] = "清俭",
+	[":qingjian"] = "每回合限一次，当你于摸牌阶段外获得牌时，你可以将其中任意张牌交给其他角色。",
 	--猛包--
 	["meng_zhaoyun"] = "赵子龙",
 	["~meng_zhaoyun"] = "你们谁，还敢在上！",
@@ -8593,6 +8809,9 @@ sgs.LoadTranslationTable{
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
 	["shaoying-invoke"] = "你可以指定一名角色，视为对其使用一张【火攻】",
+	--加强包--
+	["@hubu-card"] = "你可以使用其中任意张【杀】",
+	["#hubu"] = "虎步",
 -----exchange-----
 	["tuifengPush"] = "您可以将一张牌当作“锋”置于武将牌上",
 -----choice-----

@@ -2950,6 +2950,7 @@ sgs.ai_skill_invoke.yajiao = function(self, data)
     return true
 end
 sgs.ai_skill_cardask["@chongzhen1"] = function(self, data, pattern, target, target2)
+	self:log("ddd")
     local room = self.player:getRoom()
 	local use = data:toSlashEffect()
 	local num = use.slash:getNumber()
@@ -2981,15 +2982,16 @@ end
 sgs.ai_skill_cardask["@chongzhen2"] = function(self, data, pattern, target, target2)
     local room = self.player:getRoom()
 	local use = data:toCardUse()
-	if not use.slash then return nil end
-	local num = use.slash:getNumber()
+	if not use.card then return "." end
+	local num = use.card:getNumber()
 	local invoke = false
 	local jink_need = 1
 	if use.from:hasShownSkill("wushuang") then jink_need = 2 end
 	if use.from:getMark("drank") > 0 then invoke = true end
 	if self.player:getEquip(1) and self.player:getEquip(1):isKindOf("EightDiagram") and self:getCardsNum("Jink") >= jink_need then invoke = false end
+	if self.player:hasSkill("longdan") and self.player:hasSkill("longhun") and self:getCardsNum("Jink") + self:getCardsNum("Slash") >= 1 then invoke = false end
 	if use.from:getEquip(0) and use.from:getEquip(0):isKindOf("Axe") and use.from:getCards("he"):length() > 2 then invoke = true end
-	if invoke == false then return nil end
+	if invoke == false then return "." end
 	local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
 	self:sortByUseValue(cards, true)
@@ -4932,7 +4934,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 	   (sgs.Sanguosha:getCard(card[5]):isKindOf("DefensiveHorse") and not self.player:getDefensiveHorse()) or
 	   (sgs.Sanguosha:getCard(card[5]):isKindOf("OffensiveHorse") and not self.player:getOffensiveHorse()) or
 	   (sgs.Sanguosha:getCard(card[5]):isKindOf("Treasure") and not self.player:getTreasure()) then
-	    return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
+	    return "" .. card[5]
+	    --return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
 	end
 	if card[2] == "slash" or card[2] == "fire_slash" or card[2] == "thunder_slash" then
 	    self:sort(self.enemies, "defense")
@@ -4944,13 +4947,15 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
 	end
 	if card[2] == "peach" or card[2] == "threaten_emperor" or card[2] == "await_exhausted" or card[2] == "ex_nihilo" or card[2] == "amazing_grace" then
-		return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
+	    return "" .. card[5]
+		--return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
 	end
 	if card[2] == "savage_assault" or card[2] == "archery_attack"  then
 		local is_weak = false
@@ -4962,7 +4967,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if not is_weak then
-			return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
+			return "" .. card[5]
+			--return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
 		end
 	end
 	if card[2] == "god_salvation" then
@@ -4980,7 +4986,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			need_recover = true
 		end
 		if need_recover then
-			return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
+			return "" .. card[5]
+			--return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
 		end
 	end
 	if card[2] == "iron_chain" then
@@ -4999,7 +5006,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 		        end
 			end
 			if #targets > 0 then
-				return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+				return card[5] .. "->" .. table.concat(targets,"+")
+				--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 			else
 			    return "."
 			end
@@ -5016,7 +5024,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 				end
 			end
 			if (#targets + chained_enemy) > 1 then
-				return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+				return card[5] .. "->" .. table.concat(targets,"+")
+				--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 			else
 			    return "."
 			end
@@ -5024,7 +5033,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 	end
 	if card[2] == "burning_camps" then
 		if self:isEnemy(self.player:getNextAlive()) then
-			return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
+			return "" .. card[5]
+			--return ("%s:%s[%s:%s]=%d&jianji"):format(card[2],card[2], suit, number, card[5])
 		end
 	end
 	if card[2] == "befriend_attacking" then
@@ -5046,7 +5056,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -5061,7 +5072,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -5076,7 +5088,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -5091,7 +5104,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -5107,7 +5121,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -5129,7 +5144,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 1 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -5144,7 +5160,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -5161,7 +5178,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -5176,7 +5194,8 @@ sgs.ai_skill_use["@@jianji"]=function(self,prompt)
 			end
 		end
 		if #targets > 0 then
-			return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
+			return card[5] .. "->" .. table.concat(targets,"+")
+			--return ("%s:%s[%s:%s]=%d&jianji->%s"):format(card[2],card[2], suit, number, card[5], table.concat(targets,"+"))
 		else
 		    return "."
 		end
@@ -6162,4 +6181,64 @@ sgs.ai_skill_use["@@xunxian"] = function(self, prompt)
 		return card_str	
 	end
 	return "."
+end
+
+-----夏侯渊-----
+
+sgs.ai_skill_invoke.hubu = function(self, data)
+	return true
+end
+sgs.ai_skill_use["@@hubu"] = function(self, prompt)
+	self:updatePlayers()
+	local ids = self.player:property("hubuProp"):toString():split("+")
+	for _, id in pairs(ids) do
+		local card = sgs.Sanguosha:getCard(id)
+		if card:isKindOf("Slash") then
+			self:sort(self.enemies, "defense")
+			local targets = {}
+			for _,enemy in ipairs(self.enemies) do
+				if (not self:slashProhibit(card, enemy)) and self.player:canSlash(enemy, card) then
+					if #targets >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then break end
+					table.insert(targets,enemy:objectName())
+				end
+			end
+			if #targets > 0 then
+				return id .. "->" .. table.concat(targets,"+")
+				--return ("%s:%s[%s:%s]=%d&hubu->%s"):format(card:objectName(), card:objectName(), card:getSuit(), card:getNumber(), id, table.concat(targets,"+"))
+			else
+				return "."
+			end
+		end
+	end
+end
+
+-----徐盛-----
+
+sgs.ai_skill_invoke.pojun = function(self, data)
+	local to = data:toPlayer()
+	if self:isEnemy(to) then return true 
+	elseif self:isFriend(to) and to:hasShownSkill("xiaoji") then
+		for _, card in sgs.qlist(to:getEquips()) do 
+			if card:isRed() then 
+				return true
+			end
+		end
+	end
+	return false
+end
+sgs.ai_skill_cardchosen["pojun"] = function(self, who, flags)
+	local to = data:toPlayer()
+	if to:getEquips():length() > 0 then
+	    for _, card in sgs.qlist(to:getEquips()) do
+		    if (self:isEnemy(to) and card:isBlack()) or (self:isFriend(to) and card:isRed()) then
+			    return card:getEffectiveId()
+			end
+		end
+	end
+end
+
+-----赵云-----
+
+sgs.ai_skill_invoke.longhun = function(self, data)
+	return true
 end

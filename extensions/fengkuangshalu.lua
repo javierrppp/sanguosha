@@ -173,6 +173,7 @@ zhinang = sgs.CreateTriggerSkill{
 	name = "zhinang",
 	frequency = sgs.Skill_NotFrequent,
 	events = {sgs.Damaged},
+	can_preshow = true, 
 	view_as_skill = zhinangVS,
 	can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
