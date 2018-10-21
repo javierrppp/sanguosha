@@ -62,6 +62,7 @@ zhangfei = sgs.General(extension1, "zhangfei", "shu","4",true,false,true)
 xusheng = sgs.General(extension1, "xusheng", "wu","4",true,false,true)
 xiahouyuan = sgs.General(extension1, "xiahouyuan", "wei","4",true,false,true)
 xiahoudun = sgs.General(extension1, "xiahoudun", "wei","4",true,false,true)
+liubei = sgs.General(extension1, "liubei", "shu","4",true,false,true)
 
 --**********猛包**********-----
 
@@ -6776,7 +6777,7 @@ zhaxiangVS = sgs.CreateViewAsSkill{
 		if to_select:isEquipped() then
             return false
         end
-        return #selected <= sgs.Self:getHandcardNum() - sgs.Self:getHp()
+        return #selected < sgs.Self:getHandcardNum() - sgs.Self:getHp()
     end,
     view_as = function(self, cards) 
 		if #cards < sgs.Self:getHandcardNum() - sgs.Self:getHp() then return nil end
@@ -6821,7 +6822,55 @@ zhaxiang = sgs.CreateTriggerSkill{
 
 -----张飞-----
 
+tishen = sgs.CreateTriggerSkill{
+	name = "tishen",
+	frequency = sgs.Skill_NotFrequent,
+	relate_to_place = "deputy",
+	events = {sgs.TargetConfirmed, sgs.CardFinished, sgs.Damaged},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() then return "" end
+		if event == sgs.TargetConfirmed then
+			if not player:hasSkill(self:objectName()) then return "" end
+			local use = data:toCardUse()
+			if use.to:contains(player) and use.card:isKindOf("Slash") and use.from:objectName() ~= player:objectName() then
+				room:addPlayerMark(player, "tishenMark")
+			end
+		elseif event == sgs.CardFinished then
+			local use = data:toCardUse()
+			for _, p in sgs.qlist(use.to) do
+				if p:getMark("tishenMark") > 0 then
+					room:removePlayerMark(p, "tishenMark")
+					return self:objectName(), p
+				end
+			end
+		elseif event == sgs.Damaged then
+			if not player:hasSkill(self:objectName()) then return "" end
+			if player:getMark("tishenMark") > 0 then
+				room:removePlayerMark(player, "tishenMark")
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(ask_who,self:objectName(),data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		if event == sgs.CardFinished then
+			local use = data:toCardUse()
+			if use.card:isKindOf("Slash") and room:getCardPlace(use.card:getId()) == sgs.Player_DiscardPile then
+				ask_who:obtainCard(use.card)
+			end
+		end
+		return false
+	end
+}
 zhangfei:addSkill("paoxiao")
+zhangfei:addSkill(tishen)
+zhangfei:setDeputyMaxHpAdjustedValue(-1)
 
 -----赵云-----
 
@@ -6956,6 +7005,7 @@ hubu = sgs.CreateTriggerSkill{
 		return false
 	end,
 	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
 		local lost_hp = player:getMaxHp() - player:getHp()
 		if lost_hp <= 0 then return false end
 		local ids = room:getNCards(lost_hp)
@@ -7009,8 +7059,360 @@ xiahouyuan:addSkill(hubu)
 
 -----夏侯惇-----
 
+qingjianCard = sgs.CreateSkillCard{
+	name = "qingjianCard",
+	skill_name = "qingjian",
+	will_throw = false,
+	mute = true,
+	filter = function(self, targets, to_select, player)
+		return to_select:objectName() ~= player:objectName()
+	end ,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		targets[1]:obtainCard(self, false)
+	end
+}
+qingjianVS = sgs.CreateViewAsSkill{
+	name = "qingjian",
+	n = 999,
+	response_pattern = "@@qingjian",
+	view_filter = function(self, selected, to_select)
+		local ids = sgs.Self:property("qingjianProp"):toString():split("+")
+		return table.contains(ids, tostring(to_select:getId()))
+	end, 
+	view_as = function(self, originalCards) 
+		if #originalCards == 0 then return false end
+		local skillcard = qingjianCard:clone()
+		for _, card in ipairs(originalCards) do
+			skillcard:addSubcard(card)
+		end
+		skillcard:setSkillName("qingjian")
+        skillcard:setShowSkill("qingjian")
+		return skillcard
+	end,
+}
+qingjian = sgs.CreateTriggerSkill{
+	name = "qingjian",
+	view_as_skill = qingjianVS,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.CardsMoveOneTime},
+	can_preshow = true,
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
+		if player:hasFlag("qingjian_used") then return "" end
+		local move = data:toMoveOneTime()
+		local isGet = (move.to and move.to:objectName() == player:objectName() and move.to_place == sgs.Player_PlaceHand --[[and move.reason.m_reason ~= sgs.CardMoveReason_S_REASON_PREVIEWGIVE]])
+		if isGet then
+			local list = {}
+			for _, id in sgs.qlist(move.card_ids) do
+				table.insert(list, id)
+			end
+			room:setPlayerProperty(player, "qingjianProp", sgs.QVariant(table.concat(list, "+")))
+			return self:objectName() 
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForUseCard(player, "@@qingjian", "@qingjian_card", -1, sgs.Card_MethodNone) then
+			room:setPlayerProperty(player, "qingjianProp", sgs.QVariant(""))
+			return true
+		end
+		room:setPlayerProperty(player, "qingjianProp", sgs.QVariant(""))
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:setPlayerFlag(player, "qingjian_used")
+		room:broadcastSkillInvoke(self:objectName())
+		return false
+	end
+}	
 xiahoudun:addSkill("ganglie")
 xiahoudun:addCompanion("xiahouyuan")
+xiahoudun:addSkill(qingjian)
+
+-----刘备-----
+
+renwang = sgs.CreateTriggerSkill{
+	name = "renwang",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart},
+	can_preshow = true,
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
+		if player:getPile("renwang"):length() == 0 and player:getPhase() == sgs.Player_Finish then
+			if not player:isKongcheng() then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local card = room:askForCard(ask_who, ".|.|.|hand", "@renwang_invoke", data, sgs.Card_MethodNone, ask_who)
+		if card then
+			local _data = sgs.QVariant()
+			_data:setValue(card)
+			player:setTag("renwangTag", _data)
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		local card = player:getTag("renwangTag"):toCard()
+		player:setTag("renwangTag", sgs.QVariant())
+		player:addToPile("renwang", card, false)
+		return false
+	end
+}	
+renwangSlash = sgs.CreateTriggerSkill{
+	name = "#renwang_slash",
+	global = true,
+	frequency = sgs.Skill_Frequent,
+	events = {sgs.EventPhaseStart},
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return "" end
+		local skill_list, player_list = {}, {}
+		local liubeis = room:findPlayersBySkillName("renwang")
+		if player:isKongcheng() and player:getPhase() == sgs.Player_Finish then
+			for _, liubei in sgs.qlist(liubeis) do 
+				if liubei:getPile("renwang"):length() > 0 and sgs.Sanguosha:getCard(liubei:getPile("renwang"):first()):isKindOf("Slash") then
+					table.insert(skill_list, self:objectName())
+					table.insert(player_list, liubei:objectName())
+				end
+			end
+		end
+		return table.concat(skill_list, "|"), table.concat(player_list, "|")
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local card = sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first())
+		local _data = sgs.QVariant()
+		_data:setValue(player)
+		room:setPlayerProperty(ask_who, "renwangAnalepticProp", _data)
+		if room:askForSkillInvoke(ask_who,"renwangSlash", sgs.QVariant("renwangSlash:" .. player:objectName() .. "::" .. card:objectName())) then
+			room:setPlayerProperty(ask_who, "renwangAnalepticProp", sgs.QVariant())
+			return true
+		end
+		room:setPlayerProperty(ask_who, "renwangAnalepticProp", sgs.QVariant())
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke("renwang")
+		local card = sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first())
+		if not card:isKindOf("Slash") then return false end
+		--local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		--slash:setSkillName("renwang")
+		local card_use = sgs.CardUseStruct()
+		card_use.from = ask_who
+		card_use.to:append(player)
+		card_use.card = card
+		room:useCard(card_use, false)
+		return false
+	end
+}	
+renwangJink = sgs.CreateTriggerSkill{
+	name = "#renwang_jink",
+	global = true,
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.TargetConfirmed},
+	can_trigger = function(self, event, room, player, data)
+		local use = data:toCardUse()
+		if not use.card:isKindOf("Slash") then return "" end
+		if player and player:hasSkill("renwang") and not player:isDead() and use.to:contains(player) then
+			if player:getPile("renwang"):length() > 0 and sgs.Sanguosha:getCard(player:getPile("renwang"):first()):isKindOf("Jink") then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		return true
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke("renwang")
+		local use = data:toCardUse()
+		local dummy = sgs.DummyCard(player:getPile("renwang"))
+		dummy:deleteLater()
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", "renwang", "")
+		room:throwCard(dummy, reason, nil)
+		if use.to:contains(player) then
+			local use = data:toCardUse()
+			room:setEmotion(player, "cancel")
+			local nullified_list = use.nullified_list
+			table.insert(nullified_list, player:objectName())
+			use.nullified_list = nullified_list
+			data:setValue(use)
+		end
+	end
+}	
+renwangPeach = sgs.CreateTriggerSkill{
+	name = "#renwang_peach",
+	global = true,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.Dying},
+	can_trigger = function(self, event, room, player, data)
+		local dying = data:toDying()
+		if not (player and player:isAlive()) then return "" end
+		local skill_list, player_list = {}, {}
+		if player:objectName() == dying.who:objectName() then
+			local liubeis = room:findPlayersBySkillName("renwang")
+			for _, liubei in sgs.qlist(liubeis) do 
+				if liubei:getPile("renwang"):length() > 0 and sgs.Sanguosha:getCard(liubei:getPile("renwang"):first()):isKindOf("Peach") then
+					table.insert(skill_list, self:objectName())
+					table.insert(player_list, liubei:objectName())
+				end
+			end
+		end
+		return table.concat(skill_list, "|"), table.concat(player_list, "|")
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local card = sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first())
+		local _data = sgs.QVariant()
+		_data:setValue(player)
+		room:setPlayerProperty(ask_who, "renwangPeachProp", _data)
+		if room:askForSkillInvoke(ask_who,"renwangPeach", sgs.QVariant("renwangPeach:" .. player:objectName() .. "::" .. card:objectName())) then
+			room:setPlayerProperty(ask_who, "renwangPeachProp", sgs.QVariant())
+			return true
+		end
+		room:setPlayerProperty(ask_who, "renwangPeachProp", sgs.QVariant())
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke("renwang")
+		local dummy = sgs.DummyCard(ask_who:getPile("renwang"))
+		dummy:deleteLater()
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", "renwang", "")
+		room:throwCard(dummy, reason, nil)
+		room:doAnimate(1, ask_who:objectName(), player:objectName())
+		local recover = sgs.RecoverStruct()
+		recover.who = ask_who
+		recover.recover = 2
+		room:recover(player, recover)
+	end
+}
+renwangAnaleptic = sgs.CreateTriggerSkill{
+	name = "#renwang_analeptic",
+	global = true,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.DamageInflicted},
+	can_trigger = function(self, event, room, player, data)
+		local damage = data:toDamage()
+		if not (player and player:isAlive() and damage.from) then return "" end
+		local skill_list, player_list = {}, {}
+		if damage.card and damage.card:isKindOf("Slash") then
+			local liubeis = room:findPlayersBySkillName("renwang")
+			for _, liubei in sgs.qlist(liubeis) do 
+				if liubei:getPile("renwang"):length() > 0 and sgs.Sanguosha:getCard(liubei:getPile("renwang"):first()):isKindOf("Analeptic") then
+					table.insert(skill_list, self:objectName())
+					table.insert(player_list, liubei:objectName())
+				end
+			end
+		end
+		return table.concat(skill_list, "|"), table.concat(player_list, "|")
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local card = sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first())
+		local _data = sgs.QVariant()
+		_data:setValue(player)
+		room:setPlayerProperty(ask_who, "renwangAnalepticProp", _data)
+		if room:askForSkillInvoke(ask_who, "renwangAnaleptic", sgs.QVariant("renwangAnaleptic:" .. player:objectName() .. "::" .. card:objectName())) then
+			room:setPlayerProperty(ask_who, "renwangAnalepticProp", sgs.QVariant())
+			return true
+		end
+		room:setPlayerProperty(ask_who, "renwangAnalepticProp", sgs.QVariant())
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke("renwang")
+		local dummy = sgs.DummyCard(ask_who:getPile("renwang"))
+		dummy:deleteLater()
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", "renwang", "")
+		room:throwCard(dummy, reason, nil)
+		local damage = data:toDamage()
+		room:doAnimate(1, ask_who:objectName(), damage.to:objectName())
+		damage.damage = damage.damage + 1
+		data:setValue(damage)
+	end
+}
+renwangOther = sgs.CreateTriggerSkill{
+	name = "#renwang_other",
+	global = true,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart, sgs.CardUsed},
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return "" end
+		if event == sgs.EventPhaseStart then
+			if not (player and player:isAlive()) then return "" end
+			local skill_list, player_list = {}, {}
+			local liubeis = room:findPlayersBySkillName("renwang")
+			if player:getPhase() == sgs.Player_Start then
+				--先清除标记
+				for _, p in sgs.qlist(room:getAlivePlayers()) do 
+					p:setTag("renwang_get_tag", sgs.QVariant())
+				end
+				for _, liubei in sgs.qlist(liubeis) do 
+					if liubei:getPile("renwang"):length() > 0 then
+						local card = sgs.Sanguosha:getCard(liubei:getPile("renwang"):first())
+						if not card:isKindOf("Slash") and not card:isKindOf("Jink") and not card:isKindOf("Analeptic") and not card:isKindOf("Peach") then
+							table.insert(skill_list, self:objectName())
+							table.insert(player_list, liubei:objectName())
+						end
+					end
+				end
+			elseif player:getPhase() == sgs.Player_Finish then
+				for _, p in sgs.qlist(room:getAlivePlayers()) do 
+					p:setTag("renwang_get_tag", sgs.QVariant())
+				end
+			end
+			return table.concat(skill_list, "|"), table.concat(player_list, "|")
+		elseif event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if not use.card then return "" end
+			local id = use.card:getId()
+			for _, p in sgs.qlist(room:getAlivePlayers()) do 
+				sendMsg(room, "id2:" .. p:property("renwang_get_prop"):toInt())
+				if p:property("renwang_get_prop"):toInt() == id then
+					room:broadcastSkillInvoke("renwang")
+					room:doAnimate(1, p:objectName(), player:objectName())
+					p:drawCards(1)
+					room:setPlayerProperty(p, "renwang_get_prop", sgs.QVariant())
+				end
+			end
+		end
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local card = sgs.Sanguosha:getCard(ask_who:getPile("renwang"):first())
+		if event == sgs.EventPhaseStart and room:askForSkillInvoke(ask_who,"renwangOther",sgs.QVariant("renwangOther:" .. player:objectName() .. "::" .. card:objectName())) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke("renwang")
+		if event == sgs.EventPhaseStart then
+			local dummy = sgs.DummyCard(ask_who:getPile("renwang"))
+			local id = ask_who:getPile("renwang"):first()
+			if dummy:getSubcards():length() > 0 then
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXCHANGE_FROM_PILE, player:objectName(), "renwang", "")
+				room:obtainCard(player, dummy, reason, false)
+				room:setPlayerProperty(ask_who, "renwang_get_prop", sgs.QVariant(id))
+			end
+		end
+	end
+}
+liubei:addSkill("rende")
+liubei:addSkill(renwang)
+liubei:addSkill(renwangSlash)
+liubei:addSkill(renwangJink)
+liubei:addSkill(renwangPeach)
+liubei:addSkill(renwangAnaleptic)
+liubei:addSkill(renwangOther)
+extension2:insertRelatedSkills("renwang","#renwang_slash")
+extension2:insertRelatedSkills("renwang","#renwang_jink")
+extension2:insertRelatedSkills("renwang","#renwang_peach")
+extension2:insertRelatedSkills("renwang","#renwang_analeptic")
+extension2:insertRelatedSkills("renwang","#renwang_other")
 
 local skillList = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("lizhan") then
@@ -8641,6 +9043,8 @@ sgs.LoadTranslationTable{
 	["$longhun2"] = "能屈能伸，才是大丈夫。",
 	["tishen"] = "替身",
 	[":tishen"] = "副将技，此武将牌上单独的阴阳鱼个数-1，一名角色对你使用【杀】结算完毕后，若该【杀】未造成伤害，你获得该【杀】。",
+	["$tishen1"] = "谁还敢过来一战！",
+	["$tishen2"] = "欺我无谋？定要尔等血偿！",
 	["pojun"] = "破军",
 	[":pojun"] = "当你使用【杀】时，你可以弃置目标角色的一张牌，若该牌为红色，其摸一张牌。",
 	["$pojun1"] = "大军在此，尔等休想前进一步！",
@@ -8650,7 +9054,11 @@ sgs.LoadTranslationTable{
 	["$hubu1"] = "神速进击，攻敌不备！",
 	["$hubu2"] = "你已经死啦！",
 	["qingjian"] = "清俭",
-	[":qingjian"] = "每回合限一次，当你于摸牌阶段外获得牌时，你可以将其中任意张牌交给其他角色。",
+	[":qingjian"] = "每回合限一次，当你获得牌时，你可以将其中任意张牌交给其他角色。",
+	["$qingjian1"] = "钱财，乃身外之物！",
+	["$qingjian2"] = "福生于清俭，德生于卑退。",
+	["renwang"] = "仁望",
+	[":renwang"] = "你的回合结束后，若你没有“仁望”牌，你可以将一张手牌背面朝上置于武将牌上，称为“仁望”。根据武将牌上的“仁望”牌获得如下效果:【闪】，你成为【杀】的目标时，你弃置该牌且该【杀】无效且你摸一张牌；【杀】，一名角色回合结束后，若其没有手牌，你可以对其使用该牌；【桃】，一名角色濒死时，你可以弃置该牌并令其回复两点体力；【酒】，一名角色使用【杀】造成伤害时，你可以弃置此牌令伤害+1；其他牌，一名角色的回合开始时，你可以将该牌正面朝上交给其，其该回合内使用该牌时你摸一张牌。",
 	--猛包--
 	["meng_zhaoyun"] = "赵子龙",
 	["~meng_zhaoyun"] = "你们谁，还敢在上！",
@@ -8812,6 +9220,17 @@ sgs.LoadTranslationTable{
 	--加强包--
 	["@hubu-card"] = "你可以使用其中任意张【杀】",
 	["#hubu"] = "虎步",
+	["@qingjian_card"] = "你可以将获得的任意张牌交给其他角色",
+	["@renwang_invoke"] = "你可以发动“仁望”，将一张牌置于武将牌上",
+	["#renwang_slash"] = "仁望",
+	["#renwang_jink"] = "仁望",
+	["#renwang_analeptic"] = "仁望",
+	["#renwang_peach"] = "仁望",
+	["#renwang_other"] = "仁望",
+	["renwangSlash:renwangSlash"] = "你可以对 %src 使用仁望牌【%arg】",
+	["renwangPeach:renwangPeach"] = "你可以弃置仁望牌【%arg】令 %src 回复两点体力",
+	["renwangAnaleptic:renwangAnaleptic"] = "你可以弃置仁望牌【%arg】令该【杀】对 %src 造成的伤害加一",
+	["renwangOther:renwangOther"] = "你可以将仁望牌【%arg】交给 %src ",
 -----exchange-----
 	["tuifengPush"] = "您可以将一张牌当作“锋”置于武将牌上",
 -----choice-----

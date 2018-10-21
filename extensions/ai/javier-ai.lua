@@ -6242,3 +6242,191 @@ end
 sgs.ai_skill_invoke.longhun = function(self, data)
 	return true
 end
+
+-----张飞-----
+
+sgs.ai_skill_invoke.tishen = function(self, data)
+	return true
+end
+
+-----夏侯惇-----
+
+function hasEquipInHand(player, equip)
+	for _, card in sgs.qlist(player:getEquips()) do 
+		if card:isKindOf(equip) then
+			return true
+		end
+	end
+	return false
+end
+sgs.ai_skill_use["@@qingjian"] = function(self, prompt)
+	local source = self.player
+	local room = self.room
+	if #self.friends_noself == 0 then return "." end
+	local card_ids = source:property("qingjianProp"):toString():split("+")
+	local need_cards = {}
+	if source:objectName() == room:getCurrent():objectName() and source:isSkipped(sgs.Player_Play) and not source:hasSkill("qiaobian") and source:getMaxCards() - source:getHandcardNum() >= #card_ids then need_cards = card_ids
+	elseif source:getPhase() ~= sgs.Player_NotActive then
+		local slash_num = 1
+		local jink_num = 1
+		local analeptic_num = 1
+		for _, id in pairs(card_ids) do 
+			local card = sgs.Sanguosha:getCard(id)
+			local slash_condition = card:isKindOf("Slash") and self:getCardsNum("Slash") > slash_num
+			local peach_condition = card:isKindOf("Peach") and not source:isWounded()
+			local jink_condition = card:isKindOf("Jink") and self:getCardsNum("Jink") > jink_num
+			local analeptic_condition = card:isKindOf("Analeptic") and self:getCardsNum("Analeptic") > analeptic_num
+			local nullification_condition = card:isKindOf("Nullification")
+			local snatch_and_supply_shortage_condition = (card:isKindOf("Snatch") or card:isKindOf("SupplyShortage"))
+			local equip_condition = (card:isKindOf("Weapon") and (source:getEquip(0) or hasEquipInHand(source, "Weapon"))) 
+				or (card:isKindOf("Armor") and (source:getEquip(1) or hasEquipInHand(source, "Armor")))
+				or (card:isKindOf("DefensiveHorse") and (source:getEquip(2) or hasEquipInHand(source, "OffensiveHorse"))) 
+				or (card:isKindOf("OffensiveHorse") and (source:getEquip(3) or hasEquipInHand(source, "OffensiveHorse"))) 
+				or (card:isKindOf("Treasure") and (source:getEquip(4) or hasEquipInHand(source, "Treasure")))
+			for _, p in pairs(self.enemies) do
+				local has_target = false
+				if source:distanceTo(p) == 1 then
+					has_target = true
+				end
+				if has_target then
+					snatch_and_supply_shortage_condition = false
+				end
+			end
+			local need_help = false
+			for _, p in pairs(self.friends_noself) do 
+				if self:isWeak(p) and p:getHandcardNum() < 3 then
+					need_help = true
+				end
+			end
+			if not need_help then
+				peach_condition = false
+				jink_condition = jink_condition and self:getCardsNum("Jink") > 2
+			end
+			if source:getHp() <= 1 and not source:isSkipped(sgs.Player_Play) then peach_condition = false end
+			if source:isSkipped(sgs.Player_Play) and source:getMaxCards() - source:getHandcardNum() >= #card_ids then
+				jink_condition = false
+				peach_condition = card:isKindOf("Peach")
+			    snatch_and_supply_shortage_condition = (card:isKindOf("Snatch") or card:isKindOf("SupplyShortage"))
+			    slash_condition = card:isKindOf("Slash")
+			end
+			if slash_condition or peach_condition or jink_condition or analeptic_condition or nullification_condition or snatch_and_supply_shortage_condition or equip_condition then
+				table.insert(need_cards, id)
+				if card:isKindOf("Slash") then slash_num = slash_num + 1
+				elseif card:isKindOf("Jink") then jink_num = jink_num + 1
+				elseif card:isKindOf("Analeptic") then analeptic_num = analeptic_num + 1
+				end
+			end
+		end
+	else
+		local slash_num = 1
+		local jink_num = 1
+		local peach_num = 1
+		local analeptic_num = 1
+		for _, id in pairs(card_ids) do 
+			local card = sgs.Sanguosha:getCard(id)
+			local slash_condition = card:isKindOf("Slash") and self:getCardsNum("Slash") > slash_num
+			local peach_condition = card:isKindOf("Peach") and source:getHp() > peach_num
+			local jink_condition = card:isKindOf("Jink") and self:getCardsNum("Jink") > jink_num
+			local analeptic_condition = card:isKindOf("Analeptic") and self:getCardsNum("Analeptic") > analeptic_num
+			local equip_condition = (card:isKindOf("Weapon") and (source:getEquip(0) or hasEquipInHand(source, "Weapon"))) 
+				or (card:isKindOf("Armor") and (source:getEquip(1) or hasEquipInHand(source, "Armor")))
+				or (card:isKindOf("DefensiveHorse") and (source:getEquip(2) or hasEquipInHand(source, "OffensiveHorse"))) 
+				or (card:isKindOf("OffensiveHorse") and (source:getEquip(3) or hasEquipInHand(source, "OffensiveHorse"))) 
+				or (card:isKindOf("Treasure") and (source:getEquip(4) or hasEquipInHand(source, "Treasure")))
+			local other_condition = not card:isKindOf("Slash") and not card:isKindOf("Peach") and not card:isKindOf("Jink") and not card:isKindOf("Analeptic") and not card:isKindOf("EquipCard")
+			local need_help = false
+			for _, p in pairs(self.friends_noself) do 
+				if self:isWeak(p) and p:getHandcardNum() < 3 then
+					need_help = true
+				end
+			end
+			if not need_help then
+				peach_condition = false
+				jink_condition = jink_condition and self:getCardsNum("Jink") > 2
+			end
+			if need_help and source:getHp() > 1 then analeptic_condition = card:isKindOf("Analeptic") end
+			if slash_condition or peach_condition or jink_condition or analeptic_condition or other_condition or equip_condition then
+				table.insert(need_cards, id)
+				if card:isKindOf("Slash") then slash_num = slash_num + 1
+				elseif card:isKindOf("Jink") then jink_num = jink_num + 1
+				elseif card:isKindOf("Peach") then peach_num = peach_num + 1
+				elseif card:isKindOf("Analeptic") then analeptic_num = analeptic_num + 1
+				end
+			end
+		end
+	end
+	local target
+	local candidate = self.friends_noself[1]
+	self:sort(self.friends_noself, "hp")
+	if not self:isWeak(source) or (self:isWeak(source) and (candidate:getHandcardNum() <= source:getHandcardNum() or candidate:getHp() < source:getHp())) then
+		target = candidate
+	end
+	if not target then
+		if source:getHandcardNum() > source:getMaxCards() + 1 then
+			target = candidate
+		end
+	end
+	if target and #need_cards > 0 then
+	    local card_str = "#qingjianCard:".. table.concat(need_cards, "+") ..":&qingjian->" .. target:objectName()
+		return card_str	
+	end
+	return "."
+end
+
+-----刘备——----
+
+sgs.ai_skill_invoke.renwangSlash = function(self, data)
+	local to = self.room:getCurrent()
+	if self:isFriend(to) then return false end
+	local card = sgs.Sanguosha:getCard(self.player:getPile("renwang"):first())
+	if self.player:getEquip(0) and self.player:getEquip(0):isKindOf("QinggangSword") then return true end
+	if to:getEquip(1) and to:getEquip(1):isKindOf("RenwangShield") and card:isBlack() then return false end
+	if to:getEquip(1) and to:getEquip(1):isKindOf("Vine") and not card:isKindOf("FireSlash") and not card:isKindOf("ThunderSlash") then return false end
+	if to:getEquip(1) and to:getEquip(1):isKindOf("PeaceSpell") and card:isKindOf("FireSlash") then return false end
+	if to:getEquip(1) and to:getEquip(1):isKindOf("IronArmor") and card:isKindOf("FireSlash") then return false end
+	return true
+end
+sgs.ai_skill_invoke.renwangPeach = function(self, data)
+	local to = self.player:property("renwangPeachProp"):toPlayer()
+	return self:isFriend(to)
+end
+sgs.ai_skill_invoke.renwangAnaleptic = function(self, data)
+	local to = self.player:property("renwangAnalepticProp"):toPlayer()
+	return self:isEnemy(to)
+end
+sgs.ai_skill_invoke.renwangOther = function(self, data)
+	local to = self.room:getCurrent()
+	local has_Indulgence = false
+	for _, card in sgs.qlist(to:getJudgingArea()) do 
+		if card:isKindOf("Indulgence") then
+			has_Indulgence = true
+		end
+	end
+	return to:objectName() == self.player:objectName() or (self:isFriend(to) and not has_Indulgence)
+end
+sgs.ai_skill_cardask["@renwang_invoke"] = function(self, data, pattern, target, target2)
+    local room = self.player:getRoom()
+	local cards = self.player:getCards("h")
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards, true)
+	for _,card in pairs(cards) do
+		if card:isKindOf("Peach") then
+			for _, p in sgs.pairs(self.friends) do 
+				if p:getHp() <= 2 then
+					return card:toString()
+				end
+			end
+		end
+	end
+	for _,card in pairs(cards) do
+		if card:isKindOf("Slash") or card:isKindOf("Jink") or (card:isKindOf("Analeptic") and self.player:getHp() > 1) then 
+			return card:toString()
+		end
+	end
+	for _,card in pairs(cards) do
+		if not card:isKindOf("Peach") and not card:isKindOf("Analeptic") then
+			return card:toString()
+		end
+	end
+	return nil
+end
