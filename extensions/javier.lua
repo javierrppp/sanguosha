@@ -4180,8 +4180,89 @@ mingzhe = sgs.CreateTriggerSkill{
 		return false
 	end
 }
+huanshiCard = sgs.CreateSkillCard{
+	name = "huanshiCard",
+	skill_name = "huanshi",
+	target_fixed = true,
+	mute = true,
+	will_throw = false,
+	--will_throw = true,
+	filter = function(self, targets, to_select)
+		return false
+	end,
+	on_use = function(self, room, source, targets)
+	end
+}
+huanshiVS = sgs.CreateViewAsSkill{
+	name = "huanshi",
+	expand_pile = "#huanshi",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		local ids = sgs.Self:property("huanshiProp"):toString():split("+")
+		return #selected == 0 and table.contains(ids, tostring(to_select:getId()))
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local huanshiCard = huanshiCard:clone()
+			huanshiCard:addSubcard(cards[1])
+			return huanshiCard 
+		end  
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "@@huanshi"
+	end,
+	enabled_at_play = function(self, player)
+		return false
+	end
+}
+huanshi = sgs.CreateTriggerSkill{
+	name = "huanshi" ,
+	view_as_skill = huanshiVS,
+	can_preshow = true,
+	events = {sgs.AskForRetrial} ,
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return false end
+		local judge = data:toJudge()
+		if judge.who:objectName() == player:objectName() or (judge.who:getKingdom() == player:getKingdom() and judge.who:getRole() ~= "careerist" and player:getRole() ~= "careerist") then
+			return self:objectName()
+		end
+	end ,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if room:askForSkillInvoke(player,self:objectName(),data) then
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		local room = player:getRoom()
+		local ids = sgs.IntList()
+		ids:append(room:getDrawPile():at(0))
+		ids:append(room:getDrawPile():at(1))
+		local card_list = {}
+		for i=0, 1, 1 do
+			local id = ids:at(i)
+			table.insert(card_list, id)
+		end
+		local judge = data:toJudge()
+		--local player_data = sgs.QVariant()
+		--player_data:setValue(judge.who)
+		room:setPlayerProperty(player, "huanshiDataProp", data)
+		
+		room:setPlayerProperty(player, "huanshiProp", sgs.QVariant(table.concat(card_list, "+")))
+		room:notifyMoveToPile(player, ids, self:objectName(), sgs.Player_DrawPile, true, true)
+		local card = room:askForUseCard(player, "@@huanshi", "@huanshi-card", -1,sgs.Card_MethodResponse)
+		--local card = room:askForCard(player, ".|.|.|hand", "@huanshi-card", sgs.QVariant(), sgs.Card_MethodResponse, player)
+		room:notifyMoveToPile(player, ids, self:objectName(), sgs.Player_DrawPile, false, false)
+		if card then
+			room:retrial(card, player, judge, self:objectName(), false)
+			judge:updateResult()
+		end
+		return false
+	end
+}
 zhugejin:addSkill(hongyuan)
 zhugejin:addSkill(mingzhe)
+zhugejin:addSkill(huanshi)
 
 -----李严-----
 
@@ -8823,6 +8904,7 @@ sgs.LoadTranslationTable{
 	["$mingzhe1"] = "塞翁失马，焉知非福",
 	["$mingzhe2"] = "明以洞察，哲以保身。",
 	["huanshi"] = "缓释",
+	["#huanshi"] = "缓释",
 	[":huanshi"] = "当一名与你势力相同的角色的判定牌生效前，你可以观看牌堆顶的两张牌，你可以打出其中一张牌代替该判定牌。",
 	["$huanshi1"] = "缓乐之危急，释兵之困顿。",
 	["$huanshi2"] = "尽死生之力，保友邦之安。",
