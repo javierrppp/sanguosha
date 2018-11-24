@@ -48,6 +48,7 @@ zhugeke = sgs.General(extension, "zhugeke", "wu", "3")
 luji = sgs.General(extension, "luji", "wu", "3")
 zhugedan = sgs.General(extension, "zhugedan", "wei", "4")
 yanjun = sgs.General(extension, "yanjun", "wu", "3")
+quancong = sgs.General(extension, "quancong", "wu", "4")
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -135,6 +136,71 @@ end
 --===========================================技能区============================================--
 
 --**********智包**********-----
+
+-----全琮-----
+
+yaoming = sgs.CreateTriggerSkill{
+	name = "yaoming",
+	frequency = sgs.Skill_Frequent,
+	events = {sgs.BeforeCardsMove, sgs.CardsMoveOneTime},
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
+		local move = data:toMoveOneTime()
+		if not move.from then return "" end
+		if move.from and move.from:objectName() ~= player:objectName() then return "" end
+		if event == sgs.BeforeCardsMove then
+			room:setPlayerMark(player,"yaomingMark",0)
+			local reason = move.reason.m_reason
+			local reasonx = bit32.band(reason, sgs.CardMoveReason_S_MASK_BASIC_REASON)
+			local Yes = reasonx == sgs.CardMoveReason_S_REASON_DISCARD
+			if Yes then
+				local card
+				local i = 0
+				for _,id in sgs.qlist(move.card_ids) do
+					card = sgs.Sanguosha:getCard(id)
+					if move.from_places:at(i) == sgs.Player_PlaceHand or move.from_places:at(i) == sgs.Player_PlaceEquip then
+						if card and room:getCardOwner(id):getSeat() == player:getSeat() then
+							i = i + 1
+						end
+					end
+				end
+				if i > 3 then i = 3 end
+				room:setPlayerMark(player,"yaomingMark",i)
+				return ""
+			end
+		else
+			if player:getMark("yaomingMark") > 0 and not player:hasFlag("yaoming_used") then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		local number = player:getMark("yaomingMark")
+		local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "yaoming-choose:::"..number, true, true)
+		if to then
+			local data = sgs.QVariant()
+			data:setValue(to)
+			room:setPlayerProperty(player, "yaomingProp", data)
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		room:setPlayerFlag(player, "yaoming_used")
+		local to = player:property("yaomingProp"):toPlayer()
+		local number = player:getMark("yaomingMark")
+		local choice = room:askForChoice(player, self:objectName(), "yaoming_draw+yaoming_discard")
+		if choice == "yaoming_draw" then
+			to:drawCards(number)
+		else
+			room:askForDiscard(to, self:objectName(), number, number, false, true)
+		end
+		return false
+	end
+}
+quancong:addSkill(yaoming)
 
 -----严畯-----
 
@@ -4091,8 +4157,8 @@ mingzhe = sgs.CreateTriggerSkill{
 						end
 					end
 				end
-				player:gainMark("mingzheMark",i)
-				--room:setPlayerMark(player,"mingzheMark",i)
+				--player:gainMark("mingzheMark",i)
+				room:setPlayerMark(player,"mingzheMark",i)
 				return ""
 			end
 		else
@@ -9013,6 +9079,13 @@ sgs.LoadTranslationTable{
 	[":guanchao"] = "出牌阶段开始时，你可以进行判定，若本回合你以此法判定的所有判定牌点数呈严格递增或严格递减，你重复此流程，否则你弃置该判定牌并获得所有其他因此法判定的判定牌。你于出牌阶段结束后弃置所有因此法获得的牌。",
 	["xunxian"] = "逊贤",
 	[":xunxian"] = "当你使用牌时，你可以将一张相同花色的牌交给一名其他角色。",
+	["quancong"] = "全琮",
+	["~quancong"] = "儿啊，好好报答吴王知遇之恩……",
+	["#quancong"] = "慕势耀族",
+	["yaoming"] = "邀名",
+	[":yaoming"] = "每回合限一次，当你的牌因弃置而进入弃牌堆时，你可以指定一名其他角色并选择一项：1、其摸x张牌；2、其弃置x张牌。（x为你弃置的牌数且最多为3）",
+	["$yaoming1"] = "看我如何以无用之力换己所需，哈哈哈……",
+	["$yaoming2"] = "民不足食，何以养军？！",
 	--加强包--
 	["lizhan"] = "励战",
 	[":lizhan"] = "副将技，此武将牌上单独的阴阳鱼个数-1，回合结束时，你可以令任意名已受伤的角色摸一张牌。",
@@ -9219,6 +9292,9 @@ sgs.LoadTranslationTable{
 	["#aocai"] = "傲才",
 	["gongaoExchange"] = "你需将 %arg 张手牌置于武将牌上",
 	["@xunxian-card"] = "你可以将一张 %arg 花色的手牌交给一名其他角色",
+	["yaoming-choose"] = "请选择一名其他角色，令其摸 %arg 张牌或者弃置 %arg 张牌。",
+	["yaoming_draw"] = "摸牌",
+	["yaoming_discard"] = "弃牌",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
