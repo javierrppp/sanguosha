@@ -6440,7 +6440,7 @@ sgs.ai_skill_playerchosen.yaoming = function(self, targets)
 	if not friend then toFriend = false end
 	if not enemy then toFriend = true end
 	if friend and enemy then
-		if enemy:getHandcardNum() + enemy:getEquips():length() > num + 2 then toFriend = true
+		if enemy:getHandcardNum() + enemy:getEquips():length() < num + 2 then toFriend = true
 		elseif enemy:getHandcardNum() < friend:getHandcardNum() and enemy:getHp() <= friend:getHp() then
 			toFriend = false
 		else
