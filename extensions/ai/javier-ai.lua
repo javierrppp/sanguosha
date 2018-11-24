@@ -5654,16 +5654,13 @@ sgs.ai_skill_use_func["#fanxiangCard"] = function(card, use, self)
 			kingdom_num = 0
 		end
 	end
-	self:log("ss")
 	local targets_list = sgs.SPlayerList()
 	if not best_to_choice and self:isWeak(source) then
 		best_to_choice = room:getOtherPlayers(source):first()
-	self:log("aa")
 	end
 	if best_to_choice then targets_list:append(best_to_choice) end
 	if targets_list:length() == 1 then
 		use.card = card
-	self:log("dd")
 		if use.to then use.to = targets_list end
 	end
 end
@@ -6430,3 +6427,39 @@ sgs.ai_skill_cardask["@renwang_invoke"] = function(self, data, pattern, target, 
 	end
 	return nil
 end
+
+-----全琮-----
+
+sgs.ai_skill_playerchosen.yaoming = function(self, targets)
+	self:sort(self.friends_noself, "hp")
+	self:sort(self.enemies, "hp")
+	local num = self.player:getMark("yaomingMark")
+	local friend = self.friends_noself[1]
+	local enemy = self.enemies[1]
+	local toFriend = false
+	if not friend then toFriend = false end
+	if not enemy then toFriend = true end
+	if friend and enemy then
+		if enemy:getHandcardNum() + enemy:getEquips():length() > num + 2 then toFriend = true
+		elseif enemy:getHandcardNum() < friend:getHandcardNum() and enemy:getHp() <= friend:getHp() then
+			toFriend = false
+		else
+			toFriend = true
+		end
+	end
+	if toFriend then
+		return friend
+	else
+		return enemy
+	end
+end
+sgs.ai_skill_choice["yaoming"] = function(self, choices, data)
+    local to = self.player:property("yaomingProp"):toPlayer()
+	if self:isFriend(to) then
+		return "yaoming_draw"
+	else
+		return "yaoming_discard"
+	end
+end
+
+
