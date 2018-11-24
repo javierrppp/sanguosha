@@ -2317,9 +2317,9 @@ sgs.ai_skill_use["@@huanshi"] = function(self, prompt)
 	
 	for _, id in pairs(ids) do
 		local card = sgs.Sanguosha:getCard(id)
-		--[[if self.player:isEnemy() and judge.good() then
-			if judge.isGood(card) then
-				return ("%s:%s[%s:%s]=%d&huanshi"):format(card:objectName(), card:objectName(), card:getSuit(), card:getNumber(), id)
+		--[[if self:isEnemy(judge.who) and judge.good() then
+			if not judge.isGood(card) then
+				----
 			end
 		end]]-- --与自己势力相同，不会是敌人
 		if judge:isGood(card) then

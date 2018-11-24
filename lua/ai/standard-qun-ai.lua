@@ -603,7 +603,25 @@ sgs.ai_skill_invoke.mengjin = function(self, data)
 end
 
 sgs.ai_skill_cardask["@guidao-card"]=function(self, data)
-	if not (self:willShowForAttack() or self:willShowForDefence() ) then return "." end
+	local judge = data:toJudge()
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	for _, card in sgs.qlist(self.player:getEquips()) do
+		table.insert(cards, 1, card)
+	end
+	for _, card in pairs(cards) do
+		if not card:isKindOf("Peach") and card:isBlack() then
+			if self:isEnemy(judge.who) and judge:isGood() then
+				if not judge:isGood(card) then
+					return card:toString()
+				end
+			elseif self:isFriend(judge.who) and not judge:isGood() then
+				if judge:isGood(card) then
+					return card:toString()
+				end
+			end
+		end
+	end
+	--[[if not (self:willShowForAttack() or self:willShowForDefence() ) then return "." end
 	local judge = data:toJudge()
 	local all_cards = self.player:getCards("he")
 	for _, id in sgs.qlist(self.player:getHandPile()) do
@@ -649,7 +667,7 @@ sgs.ai_skill_cardask["@guidao-card"]=function(self, data)
 	elseif self:needRetrial(judge) or self:getUseValue(judge.card) > self:getUseValue(sgs.Sanguosha:getCard(card_id)) then
 		local card = sgs.Sanguosha:getCard(card_id)
 		return "$" .. card_id
-	end
+	end--]]
 
 	return "."
 end
