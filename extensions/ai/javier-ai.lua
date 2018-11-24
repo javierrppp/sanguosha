@@ -2305,6 +2305,29 @@ sgs.ai_skill_choice["hongyuan"] = function(self, choices, data)
 	if num == 2 then return "friend_draw" end
 	return "enemy_discard"
 end
+sgs.ai_skill_invoke.huanshi = function(self, data)
+    return true
+end
+sgs.ai_skill_use["@@huanshi"] = function(self, prompt)
+	self:updatePlayers()
+	local data = self.player:property("huanshiDataProp")
+	local ids = self.player:property("huanshiProp"):toString():split("+")
+	local judge = data:toJudge()
+	if judge:isGood() then return "." end
+	
+	for _, id in pairs(ids) do
+		local card = sgs.Sanguosha:getCard(id)
+		--[[if self.player:isEnemy() and judge.good() then
+			if judge.isGood(card) then
+				return ("%s:%s[%s:%s]=%d&huanshi"):format(card:objectName(), card:objectName(), card:getSuit(), card:getNumber(), id)
+			end
+		end]]-- --与自己势力相同，不会是敌人
+		if judge:isGood(card) then
+			local card_str = "#huanshiCard:".. id ..":&huanshi"
+			return card_str
+		end
+	end
+end
 
 -----钟会-----
 
