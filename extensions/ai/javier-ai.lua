@@ -6486,4 +6486,109 @@ sgs.ai_skill_choice["yaoming"] = function(self, choices, data)
 	end
 end
 
+-----王平-----
 
+sgs.ai_skill_invoke.binglve = function(self, data)
+	return true
+end
+sgs.ai_skill_exchange.binglve = function(self, pattern, max_num, min_num, expand_pile)
+	local room = self.room
+	local to_discard = {}
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	for _,c in ipairs(cards) do
+		if not (c:isKindOf("Peach") or c:isKindOf("Analeptic")) then 
+			if room:getCardPlace(c:getId()) == sgs.Player_PlaceEquip then
+				if c:isKindOf("Vine") or (not c:isKindOf("Armor") and not c:isKindOf("DefensiveHorse")) then
+					table.insert(to_discard, c:getEffectiveId())
+				end
+			else
+				table.insert(to_discard, c:getEffectiveId())
+			end
+		end
+		if #to_discard >= min_num then break end
+	end
+	return to_discard
+end
+sgs.ai_skill_playerchosen.feijun = function(self, targets)
+	self:sort(self.friends_noself, "hp")
+	self:sort(self.enemies, "hp")
+	local friend 
+	local enemy
+	for _, p in pairs(self.friends_noself) do
+		if targets:contains(p) then
+			friend = p
+		end
+	end
+	for _, p in pairs(self.enemies) do
+		if targets:contains(p) then
+			enemy = p
+		end
+	end
+	local toFriend = false
+	local data = self.player:property("feijunDataProp")
+	local use = data:toCardUse()
+	if use.card:isKindOf("Peach") or use.card:isKindOf("ExNihilo") or use.card:isKindOf("BefriendAttacking") or use.card:isKindOf("AwaitExhausted") or use.card:isKindOf("Analeptic") or use.card:isKindOf("AllianceFeast") then
+		toFriend = true
+	end
+	if toFriend and friend then
+		return friend
+	elseif not toFriend and enemy then
+		return enemy
+	end
+	return nil
+end
+
+-----张梁-----
+
+sgs.ai_skill_invoke.jijun = function(self, data)
+	return true
+end
+--[[sgs.ai_skill_use["@@fangtong"] = function(self, prompt)
+	self:sort(self.enemies, "hp")
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards,true)
+	local sortedPile = {}
+	for _, id in sgs.qlist(piles) do 
+		table.insert(sortedPile, sgs.Sanguosha:getCard(id))
+	end
+	for i = 1, #sortedPile, 1 do 
+		local changed = false
+		for j = i + 1, #sortedPile, 1 do 
+			if sortedPile[j - 1]:getNumber() < sortedPile[j]:getNumber() then
+				local card = sortedPile[j - 1]
+				sortedPile[j - 1] = sortedPile[j]
+				sortedPile[j] = card
+				changed = true
+			end
+			if not changed then
+				break
+			end
+		end
+	end
+	self:log(".."..table.concat(sortedPile, "+"))
+	local number = 0
+	local need_card = {}
+	for _, card in pairs(sortedPile) do
+		number = number + card:getNumber()
+		table.insert(need_card, card:getEffectiveId())
+		if number >= 23 and number < 36 then
+			for _, handCard in pairs(cards) do 
+				if number + handCard == 36 and not handCard:isKindOf("Peach") then
+					table.insert(need_card, handCard:getEffectiveId())
+					break
+				end
+			end
+		end
+		if number > 36 then 
+	end
+	
+	
+	if target and need_card then
+	    local card_str = "#jujianCard:"..need_card..":&jujian->" .. target:objectName()
+		return card_str	
+	end
+	return "."
+end--]]
