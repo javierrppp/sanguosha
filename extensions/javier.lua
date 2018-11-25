@@ -142,35 +142,51 @@ end
 yaoming = sgs.CreateTriggerSkill{
 	name = "yaoming",
 	frequency = sgs.Skill_Frequent,
-	events = {sgs.BeforeCardsMove, sgs.CardsMoveOneTime},
+	events = {sgs.BeforeCardsMove, sgs.CardsMoveOneTime, sgs.EventPhaseStart},
 	can_trigger = function(self, event, room, player, data)
-		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
-		local move = data:toMoveOneTime()
-		if not move.from then return "" end
-		if move.from and move.from:objectName() ~= player:objectName() then return "" end
-		if event == sgs.BeforeCardsMove then
-			room:setPlayerMark(player,"yaomingMark",0)
-			local reason = move.reason.m_reason
-			local reasonx = bit32.band(reason, sgs.CardMoveReason_S_MASK_BASIC_REASON)
-			local Yes = reasonx == sgs.CardMoveReason_S_REASON_DISCARD
-			if Yes then
-				local card
-				local i = 0
-				for _,id in sgs.qlist(move.card_ids) do
-					card = sgs.Sanguosha:getCard(id)
-					if move.from_places:at(i) == sgs.Player_PlaceHand or move.from_places:at(i) == sgs.Player_PlaceEquip then
-						if card and room:getCardOwner(id):getSeat() == player:getSeat() then
-							i = i + 1
-						end
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Finish then
+				for _, p in sgs.qlist(room:getAllPlayers()) do 
+					if p:hasFlag("yaoming_used") then
+						room:setPlayerFlag(p, "-yaoming_used")
 					end
 				end
-				if i > 3 then i = 3 end
-				room:setPlayerMark(player,"yaomingMark",i)
-				return ""
 			end
-		else
-			if player:getMark("yaomingMark") > 0 and not player:hasFlag("yaoming_used") then
-				return self:objectName()
+		elseif event == sgs.BeforeCardsMove or event == sgs.CardsMoveOneTime then
+			if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return "" end
+			local move = data:toMoveOneTime()
+			if not move.from then return "" end
+			if move.from and move.from:objectName() ~= player:objectName() then return "" end
+			sendMsg(room, "111")
+			if event == sgs.BeforeCardsMove then
+				room:setPlayerMark(player,"yaomingMark",0)
+			sendMsg(room, "222")
+				local reason = move.reason.m_reason
+				local reasonx = bit32.band(reason, sgs.CardMoveReason_S_MASK_BASIC_REASON)
+				local Yes = reasonx == sgs.CardMoveReason_S_REASON_DISCARD
+			sendMsg(room, "333")
+				if Yes then
+					local card
+					local i = 0
+					for _,id in sgs.qlist(move.card_ids) do
+						card = sgs.Sanguosha:getCard(id)
+						if move.from_places:at(i) == sgs.Player_PlaceHand or move.from_places:at(i) == sgs.Player_PlaceEquip then
+							if card and room:getCardOwner(id):getSeat() == player:getSeat() then
+								i = i + 1
+							end
+						end
+					end
+					if i > 3 then i = 3 end
+			sendMsg(room, "444")
+					room:setPlayerMark(player,"yaomingMark",i)
+					return ""
+				end
+			else
+			sendMsg(room, "mark:"..player:getMark("yaomingMark"))
+				if player:getMark("yaomingMark") > 0 and not player:hasFlag("yaoming_used") then
+			sendMsg(room, "555")
+					return self:objectName()
+				end
 			end
 		end
 		return ""
@@ -4223,6 +4239,7 @@ huanshi = sgs.CreateTriggerSkill{
 	can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return false end
 		local judge = data:toJudge()
+		if not judge.who:hasShownOneGeneral() then return "" end
 		if judge.who:objectName() == player:objectName() or (judge.who:getKingdom() == player:getKingdom() and judge.who:getRole() ~= "careerist" and player:getRole() ~= "careerist") then
 			return self:objectName()
 		end

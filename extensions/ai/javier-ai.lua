@@ -3676,6 +3676,7 @@ sgs.ai_skill_invoke.jinqu = function(self, data)
 	if data:toString() == "1" then return true end
 	local x = self.player:getMark("@qizhi")
 	local handcardNum = self.player:getHandcardNum()
+	if x == 0 then return false end
 	if handcardNum <= x then
 		return true
 	elseif (handcardNum > 0 and handcardNum < 3 and handcardNum - x <= 1) or (handcardNum >=3 and handcardNum < 6 and handcardNum - x <= 2) or (handcardNum >=6 and handcardNum < 10 and handcardNum - x <= 3) then

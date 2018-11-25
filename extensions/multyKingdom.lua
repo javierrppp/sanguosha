@@ -658,10 +658,10 @@ zhanxing = sgs.CreateTriggerSkill{
 				return self:objectName()
 			end
 		end
-		--[[for _, c in sgs.qlist(move.card_ids) do 
+		for _, c in sgs.qlist(move.card_ids) do 
 			local ccc = sgs.Sanguosha:getCard(c)
 			room:setCardFlag(ccc, "-zhanxing_flag", player)
-		end--]]
+		end
 		return ""
 	end,
 	on_cost = function(self, event, room, player, data, ask_who)
