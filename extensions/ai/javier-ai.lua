@@ -6541,26 +6541,34 @@ sgs.ai_skill_playerchosen.feijun = function(self, targets)
 end
 
 -----张梁-----
-
-sgs.ai_skill_invoke.jijun = function(self, data)
-	return true
-end
---[[sgs.ai_skill_use["@@fangtong"] = function(self, prompt)
-	self:sort(self.enemies, "hp")
-	local cards = self.player:getCards("he")
-	cards = sgs.QList2Table(cards)
-	self:sortByUseValue(cards,true)
-	local sortedPile = {}
-	for _, id in sgs.qlist(piles) do 
-		table.insert(sortedPile, sgs.Sanguosha:getCard(id))
+function getPossibleCards(number, cards, bags, card_num, result_table, card_id)
+	if number < 0 then
+		return nil 
+	elseif card_num <= 0 then
+		return nil
+	elseif number == 0 then
+		table.insert(bags, card_id)
+		result_table[1] = bags
+	else
+	--self:log("number:"..number..",card_num:"..card_num..",card_id:"..card_id)
+		--不减去这个数
+		getPossibleCards(number, cards, bags, card_num - 1, result_table, card_id)
+		--减去这个数
+		local last_card = cards[card_num]
+		local last_num = sgs.Sanguosha:getCard(last_card):getNumber()
+		local new_bags = table.copyFrom(bags)
+		table.insert(new_bags, last_card)
+		getPossibleCards(number - last_num, cards, new_bags, card_num - 1, result_table, card_id)
 	end
-	for i = 1, #sortedPile, 1 do 
+end
+function sortTable(data)
+	for i = 1, #data, 1 do 
 		local changed = false
-		for j = i + 1, #sortedPile, 1 do 
-			if sortedPile[j - 1]:getNumber() < sortedPile[j]:getNumber() then
-				local card = sortedPile[j - 1]
-				sortedPile[j - 1] = sortedPile[j]
-				sortedPile[j] = card
+		for j = i + 1, #data, 1 do 
+			if sgs.Sanguosha:getCard(data[j - 1]):getNumber() > sgs.Sanguosha:getCard(data[j]):getNumber() then
+				local card = data[j - 1]
+				data[j - 1] = data[j]
+				data[j] = card
 				changed = true
 			end
 			if not changed then
@@ -6568,27 +6576,74 @@ end
 			end
 		end
 	end
-	self:log(".."..table.concat(sortedPile, "+"))
+end
+sgs.ai_skill_invoke.jijun = function(self, data)
+	return true
+end
+sgs.ai_skill_use["@@fangtong"] = function(self, prompt)
+	self:sort(self.enemies, "hp")
+	local enemy1 = self.enemies[1]
+	local enemy2 = self.enemies[2]
+	if not enemy1 then return "." end
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards,true)
+	local sortedPile = {}
+	for _, id in sgs.qlist(self.player:getPile("jun")) do 
+		table.insert(sortedPile, id)
+	end
+	sortTable(sortedPile)
 	local number = 0
-	local need_card = {}
-	for _, card in pairs(sortedPile) do
-		number = number + card:getNumber()
-		table.insert(need_card, card:getEffectiveId())
-		if number >= 23 and number < 36 then
-			for _, handCard in pairs(cards) do 
-				if number + handCard == 36 and not handCard:isKindOf("Peach") then
-					table.insert(need_card, handCard:getEffectiveId())
-					break
-				end
-			end
+	local the_cards = {}
+	local maxNum = 10   --最多只考虑十张牌
+	for _, id in pairs(sortedPile) do
+		maxNum = maxNum - 1
+		table.insert(the_cards, id)
+		if maxNum <= 0 then
+			break
 		end
-		if number > 36 then 
+	end
+	local possible_cards = {}
+	local bags = {}
+	for _,c in ipairs(cards) do
+		table.insert(the_cards, c:getId())
+		sortTable(the_cards)
+		getPossibleCards(36-c:getNumber(), the_cards, bags, #the_cards, possible_cards, c:getId())
+		table.removeOne(the_cards, c:getId())
 	end
 	
+	if #possible_cards == 0 then
+		for _,c in ipairs(cards) do
+			table.insert(the_cards, c:getId())
+			sortTable(the_cards)
+			getPossibleCards(24-c:getNumber(), the_cards, bags, #the_cards, possible_cards, c:getId())
+			table.removeOne(the_cards, c:getId())
+		end
+	end
 	
-	if target and need_card then
-	    local card_str = "#jujianCard:"..need_card..":&jujian->" .. target:objectName()
+	if #possible_cards == 0 then return "." end
+	local totoalNum = 0
+	for _, id in pairs(possible_cards[1]) do 
+		totoalNum = totoalNum + sgs.Sanguosha:getCard(id):getNumber()
+	end
+	self:log("totalNumber:"..totoalNum)
+	if totoalNum ~= 24 and totoalNum ~= 36 then self:log("不等于，算法有误") return "." end
+	
+	local targets_list = {}
+	if totoalNum == 24 then
+		table.insert(targets_list, enemy1:objectName())
+	elseif totoalNum == 36 then
+		if enemy2 and enemy1:getHp() == 1 and enemy2:getHp() == 1 then
+			table.insert(targets_list, enemy1:objectName())
+			table.insert(targets_list, enemy2:objectName())
+		else
+			table.insert(targets_list, enemy1:objectName())
+		end
+	end
+	
+	if #targets_list > 0 and #possible_cards > 0 then
+	    local card_str = "#fangtongCard:"..table.concat(possible_cards[1], "+")..":&fangtong->"..table.concat(targets_list, "+")
 		return card_str	
 	end
 	return "."
-end--]]
+end

@@ -144,14 +144,21 @@ end
 jijun = sgs.CreateTriggerSkill{
 	name = "jijun",
 	frequency = sgs.Skill_NotFrequent ,
-	events = {sgs.CardUsed} ,
+	events = {sgs.CardUsed, sgs.CardResponded} ,
 	can_trigger = function(self, event, room, player, data)	
 		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
-		local use = data:toCardUse()
-		if not use.to:contains(player) then return "" end
-		if use.card:isKindOf("EquipCard") and not use.card:isKindOf("Weapon") then return "" end
-		if use.card:isKindOf("BasicCard") or use.card:isKindOf("TrickCard") or use.card:isKindOf("EquipCard") then
-			return self:objectName()
+		if event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if not use.to:contains(player) then return "" end
+			if use.card:isKindOf("EquipCard") and not use.card:isKindOf("Weapon") then return "" end
+			if use.card:isKindOf("BasicCard") or use.card:isKindOf("TrickCard") or use.card:isKindOf("EquipCard") then
+				return self:objectName()
+			end
+		elseif event == sgs.CardResponded then
+			local response = data:toCardResponse()
+			if response.m_isUse and response.m_card:isKindOf("Jink") then
+				return self:objectName()
+			end
 		end
 		return ""
 	end,
@@ -8949,7 +8956,7 @@ chengong:addCompanion("lvbu")
 caojie:addCompanion("liuxie")
 xiahoushi:addCompanion("zhangfei")
 zhugeke:addCompanion("zhugejin")
-zhangliang:addCompanion("zhaojiao")
+zhangliang:addCompanion("zhangjiao")
 
 --**********猛包**********-----
 
@@ -9494,7 +9501,7 @@ sgs.LoadTranslationTable{
 	["zhangliang"] = "张梁",
 	["#zhangliang"] = "统阵聚方",
 	["jijun"] = "集军",
-	[":jijun"] = "当你使用牌时，若该牌的目标包括你，且该牌不为武器牌外的装备牌，你可以将牌堆顶的一张牌置于武将牌上，称为“军”。",
+	[":jijun"] = "当你使用牌时，若该牌的目标包括你且不为武器牌外的装备牌，或者该牌为【闪】，你可以将牌堆顶的一张牌置于武将牌上，称为“军”。",
 	["fangtong"] = "方统",
 	[":fangtong"] = "你的回合结束后，你可以弃置一张牌和至少一张“军”并指定至多x名其他角色，你弃置这些角色的共计x张牌并对这些角色造成共计x点雷属性伤害。（你弃置的牌点数之和为：24，x=1；36，x=2；其他，x=0）",
 	--加强包--
@@ -9708,6 +9715,7 @@ sgs.LoadTranslationTable{
 	["yaoming_discard"] = "弃牌",
 	["feijun-choose"] = "你可以选择额外一名目标",
 	["binglveExchange"] = "你可以弃置至多 %arg 张牌",
+	["kuangcai_usecard"] = "狂才",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
@@ -9770,6 +9778,7 @@ sgs.LoadTranslationTable{
 	["shouxiPile"] = "玺",
 	["stars"] = "星",
 	["gong"] = "功",
+	["jun"] = "军",
 -----mark-----
 	["@lead"] = "锋",
 	["@yaowu"] = "耀武",

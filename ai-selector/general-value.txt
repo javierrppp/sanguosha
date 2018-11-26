@@ -137,3 +137,6 @@ yanjun								8
 luji								7
 zhugedan								7
 zhugeke								6
+quancong								8
+wangping								7
+zhangliang							7
