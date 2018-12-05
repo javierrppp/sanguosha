@@ -169,3 +169,6 @@ quancong	sunquan									20 20
 quancong lusu									18 18
 luxun quancong									16 17
 zhugejin yanjun									25 23
+wangcan jiaxu									18 18
+wangcan liru									18 18
+wangcan mateng									21 21

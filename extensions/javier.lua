@@ -7957,7 +7957,8 @@ renwangOther = sgs.CreateTriggerSkill{
 			if player:getPhase() == sgs.Player_Start then
 				--先清除标记
 				for _, p in sgs.qlist(room:getAlivePlayers()) do 
-					p:setTag("renwang_get_tag", sgs.QVariant())
+					--room:setPlayerProperty(p, "renwang_get_prop", sgs.QVariant())
+					--room:setPlayerProperty(p, "is_renwang_get_active", sgs.QVariant(0))
 				end
 				for _, liubei in sgs.qlist(liubeis) do 
 					if liubei:getPile("renwang"):length() > 0 then
@@ -7970,7 +7971,8 @@ renwangOther = sgs.CreateTriggerSkill{
 				end
 			elseif player:getPhase() == sgs.Player_Finish then
 				for _, p in sgs.qlist(room:getAlivePlayers()) do 
-					p:setTag("renwang_get_tag", sgs.QVariant())
+					room:setPlayerProperty(p, "renwang_get_prop", sgs.QVariant())
+					room:setPlayerProperty(p, "is_renwang_get_active", sgs.QVariant(0))
 				end
 			end
 			return table.concat(skill_list, "|"), table.concat(player_list, "|")
@@ -7978,12 +7980,13 @@ renwangOther = sgs.CreateTriggerSkill{
 			local use = data:toCardUse()
 			if not use.card then return "" end
 			local id = use.card:getId()
-			for _, p in sgs.qlist(room:getAlivePlayers()) do 
-				if p:property("renwang_get_prop"):toInt() == id then
+			for _, p in sgs.qlist(room:getAlivePlayers()) do	
+				if p:property("is_renwang_get_active"):toInt() == 1 and p:property("renwang_get_prop"):toInt() == id then
 					room:broadcastSkillInvoke("renwang")
 					room:doAnimate(1, p:objectName(), player:objectName())
 					p:drawCards(1)
 					room:setPlayerProperty(p, "renwang_get_prop", sgs.QVariant())
+					room:setPlayerProperty(p, "is_renwang_get_active", sgs.QVariant(0))
 				end
 			end
 		end
@@ -8005,6 +8008,7 @@ renwangOther = sgs.CreateTriggerSkill{
 			if dummy:getSubcards():length() > 0 then
 				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXCHANGE_FROM_PILE, player:objectName(), "renwang", "")
 				room:obtainCard(player, dummy, reason, false)
+				room:setPlayerProperty(ask_who, "is_renwang_get_active", sgs.QVariant(1))
 				room:setPlayerProperty(ask_who, "renwang_get_prop", sgs.QVariant(id))
 			end
 		end
