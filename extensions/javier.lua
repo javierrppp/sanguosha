@@ -51,6 +51,7 @@ yanjun = sgs.General(extension, "yanjun", "wu", "3")
 quancong = sgs.General(extension, "quancong", "wu", "4")
 wangping = sgs.General(extension, "wangping", "shu", "4")
 zhangliang = sgs.General(extension, "zhangliang", "qun", "4")
+wangcan = sgs.General(extension, "wangcan", "qun", "2")
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -138,6 +139,142 @@ end
 --===========================================技能区============================================--
 
 --**********智包**********-----
+
+-----王粲-----
+
+sanwen = sgs.CreateTriggerSkill{
+	name = "sanwen",
+	frequency = sgs.Skill_Compulsory ,
+	events = {sgs.EventPhaseStart} ,
+	can_trigger = function(self, event, room, player, data)	
+		if player:getPhase() ~= sgs.Player_Start then return "" end
+		local wangcan = room:findPlayersBySkillName(self:objectName())
+		for _, p in sgs.qlist(wangcan) do 
+			if (p and p:isAlive() and p:hasShownSkill(self:objectName()) and p:getMark("@lou") > 0) then
+				if p:objectName() == player:objectName() or (p:getKingdom() == player:getKingdom() and p:getRole() ~= "careerist" and player:getRole() ~= "careerist") then
+					return self:objectName(), p
+				end
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if ask_who:hasShownSkill(self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName())
+			return true 
+		end
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		room:doAnimate(1, ask_who:objectName(), player:objectName())
+		local num = ask_who:getMark("@lou")
+		local ids = sgs.IntList()
+		for i=0, num-1, 1 do
+			ids:append(room:getDrawPile():at(i))
+		end
+		local to_draw = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		for _, c in sgs.qlist(ids) do
+			local card = sgs.Sanguosha:getCard(c)
+			if card:getSuit() == sgs.Card_Spade then
+				to_draw:addSubcard(card)
+			end
+		end
+		player:obtainCard(to_draw)
+		return false
+	end
+}
+denglou = sgs.CreateTriggerSkill{
+	name = "denglou",
+	frequency = sgs.Skill_Compulsory ,
+	events = {sgs.EventPhaseStart} ,
+	can_trigger = function(self, event, room, player, data)	
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		if player:getPhase() ~= sgs.Player_Finish then return "" end
+		return self:objectName()
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if not player:hasShownSkill(self:objectName()) and room:askForSkillInvoke(player,self:objectName(),data) then
+			return true
+		end
+		if player:hasShownSkill(self:objectName()) then
+			room:notifySkillInvoked(player, self:objectName())
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		player:gainMark("@lou")
+		local num = player:getMark("@lou")
+		if num == 5 then 
+			if player:hasSkill("luanwu") and player:getMark("@chaos") == 0 then player:gainMark("@chaos") end
+			if player:hasSkill("xiongyi") and player:getMark("@arise") == 0 then player:gainMark("@arise") end
+			if player:hasSkill("qiai") and player:getMark("@ai") == 0 then player:gainMark("@ai") end
+			if player:hasSkill("fencheng") and player:getMark("@burn") == 0 then player:gainMark("@burn") end
+			player:loseAllMarks("@lou")
+		end
+		return false
+	end
+}
+denglouDistance = sgs.CreateDistanceSkill{
+	name = "#denglou_distance",
+	correct_func = function(self, from, to)
+		if to:hasShownSkill("denglou") then
+			return to:getMark("@lou")
+		elseif from:hasShownSkill("denglou") then
+			return -from:getMark("@lou")
+		end
+		return 0
+	end
+}
+qiai = sgs.CreateTriggerSkill{
+	name = "qiai",
+	frequency = sgs.Skill_Limited ,
+	events = {sgs.GameStart, sgs.Dying} ,
+	limit_mark = "@ai",
+	can_trigger = function(self, event, room, player, data)	
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		if event == sgs.GameStart then
+			player:gainMark("@ai")
+		elseif event == sgs.Dying then
+			local dying = data:toDying()
+			if dying.who:objectName() == player:objectName() and player:getMark("@ai") > 0 then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if player:askForSkillInvoke(self:objectName(), data) then
+			room:broadcastSkillInvoke(self:objectName())
+			return true 
+		end
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		player:loseMark("@ai")
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do 
+			room:doAnimate(1, player:objectName(), p:objectName())
+		end
+		room:doSuperLightbox("wangcan", self:objectName())
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do 
+			local id = room:askForCardChosen(player, p, "he", self:objectName(), false, sgs.Card_MethodNone)
+			local card = sgs.Sanguosha:getCard(id)
+			player:obtainCard(card, false)
+		end
+		local num = 1 - player:getHp()
+		local recover = sgs.RecoverStruct()
+		recover.who = player
+		recover.recover = num
+		room:recover(player, recover)
+		return false
+	end
+}
+wangcan:addSkill(sanwen)
+wangcan:addSkill(denglou)
+wangcan:addSkill(denglouDistance)
+wangcan:addSkill(qiai)
+--sgs.insertRelatedSkills(extension, "denglou", "#denglou_distance")
 
 -----张梁-----
 
@@ -8163,7 +8300,7 @@ tiequCard = sgs.CreateSkillCard{
 		local DiscardPile = room:getDiscardPile()
 		for _,cid in sgs.qlist(DiscardPile) do
 			local cd = sgs.Sanguosha:getCard(cid)
-			if cd:isKindOf("Yitian") or cd:isKindOf("Shengguangbaiyi") or cd:isKindOf("juechen") or cd:isKindOf("nanmanxiang") then
+			if cd:isKindOf("Yitian") or cd:isKindOf("Shengguangbaiyi") or cd:isKindOf("Juechen") or cd:isKindOf("Nanmanxiang") then
 				continue
 			end
 			if cd:isKindOf("Weapon") and not source:getEquip(0) then
@@ -8181,7 +8318,7 @@ tiequCard = sgs.CreateSkillCard{
 		local DrawPile = room:getDrawPile()
 		for _,cid in sgs.qlist(DrawPile) do
 			local cd = sgs.Sanguosha:getCard(cid)
-			if cd:isKindOf("Yitian") or cd:isKindOf("Shengguangbaiyi") or cd:isKindOf("juechen") or cd:isKindOf("nanmanxiang") then
+			if cd:isKindOf("Yitianjian") or cd:isKindOf("Shengguangbaiyi") or cd:isKindOf("Juechen") or cd:isKindOf("Nanmanxiang") then
 				continue
 			end
 			if cd:isKindOf("Weapon") and not source:getEquip(0) then
@@ -8196,7 +8333,7 @@ tiequCard = sgs.CreateSkillCard{
 				table.insert(cardList, cid)
 			end
 		end
-		for i = 0, 10000 do
+		--[[for i = 0, 10000 do
 			local card = sgs.Sanguosha:getEngineCard(i)
 			if card == nil then break end
 			if card:isKindOf("Yitianjian") then
@@ -8235,7 +8372,7 @@ tiequCard = sgs.CreateSkillCard{
 				end
 				if not hasNanmanxiang then table.insert(cardList, i) end
 			end
-		end
+		end--]]
 		local randomNum = math.random(1,#cardList)
 		local card = sgs.Sanguosha:getCard(cardList[randomNum])
 		local use = sgs.CardUseStruct()
@@ -9504,6 +9641,14 @@ sgs.LoadTranslationTable{
 	[":jijun"] = "当你使用牌时，若该牌的目标包括你且不为武器牌外的装备牌，或者该牌为【闪】，你可以将牌堆顶的一张牌置于武将牌上，称为“军”。",
 	["fangtong"] = "方统",
 	[":fangtong"] = "你的回合结束后，你可以弃置一张牌和至少一张“军”并指定至多x名其他角色，你弃置这些角色的共计x张牌并对这些角色造成共计x点雷属性伤害。（你弃置的牌点数之和为：24，x=1；36，x=2；其他，x=0）",
+	["wangcan"] = "王粲",
+	["#wangcan"] = "词章纵横",
+	["qiai"] = "七哀",
+	[":qiai"] = "限定技，当你濒死时，你可以获得其他所有角色的一张牌，然后将体力值回复至1。",
+	["sanwen"] = "散文",
+	[":sanwen"] = "锁定技，与你势力相同的角色回合开始时，其获得牌堆顶x张牌中的所有黑桃牌。(x为你的“楼”标记数量)",
+	["denglou"] = "登楼",
+	[":denglou"] = "锁定技，你的回合结束后，你获得一枚“楼”标记。若你此时有五枚“楼”标记，你重置你的所有限定技并失去所有的“楼”标记。你每有一枚“楼”标记，你计算其他角色的距离-1，其他角色计算与你的距离+1。",
 	--加强包--
 	["lizhan"] = "励战",
 	[":lizhan"] = "副将技，此武将牌上单独的阴阳鱼个数-1，回合结束时，你可以令任意名已受伤的角色摸一张牌。",

@@ -6647,3 +6647,11 @@ sgs.ai_skill_use["@@fangtong"] = function(self, prompt)
 	end
 	return "."
 end
+
+-----王粲-----
+sgs.ai_skill_invoke.qiai = function(self, data)
+	return true
+end
+sgs.ai_skill_invoke.denglou = function(self, data)
+	return true
+end
