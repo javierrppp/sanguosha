@@ -148,6 +148,7 @@ sanwen = sgs.CreateTriggerSkill{
 	events = {sgs.EventPhaseStart} ,
 	can_trigger = function(self, event, room, player, data)	
 		if player:getPhase() ~= sgs.Player_Start then return "" end
+		if not player:hasShownOneGeneral() then return "" end
 		local wangcan = room:findPlayersBySkillName(self:objectName())
 		for _, p in sgs.qlist(wangcan) do 
 			if (p and p:isAlive() and p:hasShownSkill(self:objectName()) and p:getMark("@lou") > 0) then
@@ -211,6 +212,7 @@ denglou = sgs.CreateTriggerSkill{
 			if player:hasSkill("xiongyi") and player:getMark("@arise") == 0 then player:gainMark("@arise") end
 			if player:hasSkill("qiai") and player:getMark("@ai") == 0 then player:gainMark("@ai") end
 			if player:hasSkill("fencheng") and player:getMark("@burn") == 0 then player:gainMark("@burn") end
+			if player:hasSkill("yaowu") and player:getMark("@yaowu") == 0 then player:gainMark("@yaowu") end
 			player:loseAllMarks("@lou")
 		end
 		return false
@@ -274,7 +276,7 @@ wangcan:addSkill(sanwen)
 wangcan:addSkill(denglou)
 wangcan:addSkill(denglouDistance)
 wangcan:addSkill(qiai)
---sgs.insertRelatedSkills(extension, "denglou", "#denglou_distance")
+sgs.insertRelatedSkills(extension, "denglou", "#denglou_distance")
 
 -----张梁-----
 
@@ -9098,6 +9100,10 @@ caojie:addCompanion("liuxie")
 xiahoushi:addCompanion("zhangfei")
 zhugeke:addCompanion("zhugejin")
 zhangliang:addCompanion("zhangjiao")
+liubei:addCompanion("zhangfei")
+liubei:addCompanion("guanyu")
+liubei:addCompanion("ganfuren")
+liubei:addCompanion("sunshangxiang_shu")
 
 --**********猛包**********-----
 
