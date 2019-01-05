@@ -6606,18 +6606,18 @@ sgs.ai_skill_use["@@fangtong"] = function(self, prompt)
 	local possible_cards = {}
 	local bags = {}
 	for _,c in ipairs(cards) do
-		table.insert(the_cards, c:getId())
-		sortTable(the_cards)
+		--table.insert(the_cards, c:getId())
+		--sortTable(the_cards)
 		getPossibleCards(36-c:getNumber(), the_cards, bags, #the_cards, possible_cards, c:getId())
-		table.removeOne(the_cards, c:getId())
+		--table.removeOne(the_cards, c:getId())
 	end
 	
 	if #possible_cards == 0 then
 		for _,c in ipairs(cards) do
-			table.insert(the_cards, c:getId())
-			sortTable(the_cards)
+			--table.insert(the_cards, c:getId())
+			--sortTable(the_cards)
 			getPossibleCards(24-c:getNumber(), the_cards, bags, #the_cards, possible_cards, c:getId())
-			table.removeOne(the_cards, c:getId())
+			--table.removeOne(the_cards, c:getId())
 		end
 	end
 	
@@ -6626,6 +6626,7 @@ sgs.ai_skill_use["@@fangtong"] = function(self, prompt)
 	for _, id in pairs(possible_cards[1]) do 
 		totoalNum = totoalNum + sgs.Sanguosha:getCard(id):getNumber()
 	end
+	self:log("totalNumberList:"..table.concat(possible_cards[1], "+"))
 	self:log("totalNumber:"..totoalNum)
 	if totoalNum ~= 24 and totoalNum ~= 36 then self:log("不等于，算法有误") return "." end
 	
@@ -6640,6 +6641,7 @@ sgs.ai_skill_use["@@fangtong"] = function(self, prompt)
 			table.insert(targets_list, enemy1:objectName())
 		end
 	end
+	self:log("zzzzzz")
 	
 	if #targets_list > 0 and #possible_cards > 0 then
 	    local card_str = "#fangtongCard:"..table.concat(possible_cards[1], "+")..":&fangtong->"..table.concat(targets_list, "+")
@@ -6654,4 +6656,275 @@ sgs.ai_skill_invoke.qiai = function(self, data)
 end
 sgs.ai_skill_invoke.denglou = function(self, data)
 	return true
+end
+
+-----杜畿-----
+sgs.ai_skill_invoke.andong = function(self, data)
+	return true
+end
+sgs.ai_skill_choice["andong"] = function(self, choices, data)
+	local damage = data:toDamage()
+	if self:isEnemy(damage.to) then
+		if self:getCardsNum("Peach") > 0 and damage.to:getHp() > damage.damage then
+			return "andongY"
+		else
+			return "andongN"
+		end
+	end
+	return "andongY"
+end
+sgs.ai_skill_use["@@andong"] = function(self, prompt)
+	self:updatePlayers()
+	local ids = self.player:property("andongProp"):toString():split("+")
+	if #ids == 0 then return nil end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Peach") then return "#andongCard:"..id..":&andong" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("ExNihilo") then return "#andongCard:"..id..":&andong" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Analeptic") then return "#andongCard:"..id..":&andong" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Jink") then return "#andongCard:"..id..":&andong" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("FightTogether") then return "#andongCard:"..id..":&andong" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Snatch") then return "#andongCard:"..id..":&andong" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Indulgence") then return "#andongCard:"..id..":&andong" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Slash") then return "#andongCard:"..id..":&andong" end end
+	return "#andongCard:"..ids[1]..":&andong"
+end
+sgs.ai_skill_use["@@yingshiGet"] = function(self, prompt)
+	self:updatePlayers()
+	local ids = self.player:property("yingshiGetProp"):toString():split("+")
+	if #ids == 0 then return nil end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Peach") then return "#yingshiGetCard:"..id..":&yingshiGet" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("ExNihilo") then return "#yingshiGetCard:"..id..":&yingshiGet" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Analeptic") then return "#yingshiGetCard:"..id..":&yingshiGet" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Jink") then return "#yingshiGetCard:"..id..":&yingshiGet" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("FightTogether") then return "#yingshiGetCard:"..id..":&yingshiGet" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Snatch") then return "#yingshiGetCard:"..id..":&yingshiGet" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Indulgence") then return "#yingshiGetCard:"..id..":&yingshiGet" end end
+	for _, id in pairs(ids) do if sgs.Sanguosha:getCard(tonumber(id)):isKindOf("Slash") then return "#yingshiGetCard:"..id..":&yingshiGet" end end
+	return "#yingshiGetCard:"..ids[1]..":&yingshiGet"
+end
+sgs.ai_skill_playerchosen.yingshi = function(self, targets)
+	self:sort(self.enemies, "hp")
+	local to = {}
+	local num = math.random(1, 2)
+	if #self.enemies == 0 then return nil
+	elseif #self.enemies == 1 then num = 1 end
+	for i = 1, num, 1 do 
+		table.insert(to,self.enemies[i])
+	end
+	return to
+end
+
+-----满宠——----
+local junxing_skill = {}
+junxing_skill.name = "junxing"
+table.insert(sgs.ai_skills, junxing_skill)
+junxing_skill.getTurnUseCard = function(self)
+	if not self:willShowForAttack() then return end
+	if self.player:isKongcheng() or self.player:hasUsed("#junxingCard") then return nil end
+	return sgs.Card_Parse("#junxingCard:.:&junxing")
+end
+sgs.ai_skill_use_func["#junxingCard"] = function(card, use, self)
+	-- find enough cards
+	local unpreferedCards = {}
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	local use_slash_num = 0
+	self:sortByKeepValue(cards)
+	for _, card in ipairs(cards) do
+		if card:isKindOf("Slash") then
+			local will_use = false
+			if use_slash_num <= sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue, self.player, card) then
+				local dummy_use = { isDummy = true }
+				self:useBasicCard(card, dummy_use)
+				if dummy_use.card then
+					will_use = true
+					use_slash_num = use_slash_num + 1
+				end
+			end
+			if not will_use then table.insert(unpreferedCards, card:getId()) end
+		end
+	end
+	local num = self:getCardsNum("Jink") - 1
+	if self.player:getArmor() then num = num + 1 end
+	if num > 0 then
+		for _, card in ipairs(cards) do
+			if card:isKindOf("Jink") and num > 0 then
+				table.insert(unpreferedCards, card:getId())
+				num = num - 1
+			end
+		end
+	end
+	for _, card in ipairs(cards) do
+		if card:isKindOf("EquipCard") then
+			local dummy_use = { isDummy = true }
+			self:useEquipCard(card, dummy_use)
+			if not dummy_use.card then table.insert(unpreferedCards, card:getId()) end
+		end
+	end
+	for _, card in ipairs(cards) do
+		if card:isNDTrick() or card:isKindOf("Lightning") then
+			local dummy_use = { isDummy = true }
+			self:useTrickCard(card, dummy_use)
+			if not dummy_use.card then table.insert(unpreferedCards, card:getId()) end
+		end
+	end
+	local use_cards = {}
+	for index = #unpreferedCards, 1, -1 do
+		if not self.player:isJilei(sgs.Sanguosha:getCard(unpreferedCards[index])) then table.insert(use_cards, unpreferedCards[index]) end
+	end
+	if #use_cards == 0 then return end
+
+	-- to friends
+	self:sort(self.friends_noself, "defense")
+	for _, friend in ipairs(self.friends_noself) do
+		if not self:toTurnOver(friend, #use_cards, "junxing") then
+			use.card = sgs.Card_Parse("#junxingCard:" .. table.concat(use_cards, "+") .. ":&junxing")
+			if use.to then use.to:append(friend) end
+			return
+		end
+	end
+	if #use_cards > 3 then
+		for _, friend in ipairs(self.friends_noself) do
+			if friend:hasShownSkills(sgs.notActive_cardneed_skill) and not friend:hasShownSkills(sgs.Active_cardneed_skill) and not friend:hasShownSkills(sgs.Active_priority_skill) and self:getOverflow(friend) <= 2 then
+				use.card = sgs.Card_Parse("#junxingCard:" .. table.concat(use_cards, "+") .. ":&junxing")
+				if use.to then use.to:append(friend) end
+				return
+			end
+		end
+	end
+
+	-- to enemies
+	local basic, trick, equip
+	for _, id in ipairs(use_cards) do
+		local typeid = sgs.Sanguosha:getEngineCard(id):getTypeId()
+		if not basic and typeid == sgs.Card_TypeBasic then basic = id
+		elseif not trick and typeid == sgs.Card_TypeTrick then trick = id
+		elseif not equip and typeid == sgs.Card_TypeEquip then equip = id
+		end
+		if basic and trick and equip then break end
+	end
+	self:sort(self.enemies, "handcard")
+	local other_enemy
+	for _, enemy in ipairs(self.enemies) do
+		local id = nil
+		if self:toTurnOver(enemy, 1) then
+			if getKnownCard(enemy, self.player, "BasicCard") == 0 then id = equip or trick end
+			if not id and getKnownCard(enemy, self.player, "TrickCard") == 0 then id = equip or basic end
+			if not id and getKnownCard(enemy, self.player, "EquipCard") == 0 then id = trick or basic end
+			if id then
+				use.card = sgs.Card_Parse("#junxingCard:" .. id .. ":&junxing")
+				if use.to then use.to:append(enemy) end
+				return
+			elseif not other_enemy then
+				other_enemy = enemy
+			end
+		end
+	end
+	if other_enemy then
+		use.card = sgs.Card_Parse("#junxingCard:" .. use_cards[1] .. ":&junxing")
+		if use.to then use.to:append(other_enemy) end
+		return
+	end
+	
+	for _, friend in ipairs(self.friends_noself) do
+		if friend:hasShownSkill("Dawu") then
+			local fog_count = 0
+			for _,friend2 in ipairs(self.friends) do
+				if friend2:getMark("@fog_ShenZhuGeLiang") > 0 then
+					fog_count = fog_count + (friend2:isWeak() and 2 or 1)
+				end
+			end
+			if fog_count >= 2 then
+				use.card = sgs.Card_Parse("#junxingCard:" .. table.concat(use_cards, "+") .. ":&junxing")
+				if use.to then use.to:append(friend) end
+				return
+			end
+		end
+	end
+end
+sgs.ai_use_priority.junxingCard = 1.2
+sgs.ai_card_intention["#junxingCard"] = function(self, card, from, tos)
+	local to = tos[1]
+	if not to:faceUp() then
+		sgs.updateIntention(from, to, -80)
+	else
+		if to:getHandcardNum() <= 1 and card:subcardsLength() >= 3 then
+			sgs.updateIntention(from, to, -40)
+		else
+			sgs.updateIntention(from, to, 80)
+		end
+	end
+end
+sgs.ai_skill_cardask["@junxing-discard"] = function(self, data, pattern)
+	local manchong = sgs.findPlayerByShownSkillName("junxing")
+	if manchong and self:isFriend(manchong) then return "." end
+
+	local types = pattern:split("|")[1]:split(",")
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	self:sortByKeepValue(cards)
+	for _, card in ipairs(cards) do
+		if not self:isValuableCard(card) then
+			for _, classname in ipairs(types) do
+				if card:isKindOf(classname) then return "$" .. card:getEffectiveId() end
+			end
+		end
+	end
+	return "."
+end
+sgs.ai_skill_cardask["@yuce-show"] = function(self, data)
+	if not self:willShowForMasochism() then return false end
+	local damage = self.room:getTag("CurrentDamageStruct"):toDamage()
+	if not damage.from or damage.from:isDead() then return "." end
+	if self:isFriend(damage.from) then return "$" .. self.player:handCards():first() end
+	local flag = string.format("%s_%s_%s", "visible", self.player:objectName(), damage.from:objectName())
+	local types = { sgs.Card_TypeBasic, sgs.Card_TypeEquip, sgs.Card_TypeTrick }
+	for _, card in sgs.qlist(damage.from:getHandcards()) do
+		if card:hasFlag("visible") or card:hasFlag(flag) then
+			table.removeOne(types, card:getTypeId())
+		end
+		if #types == 0 then break end
+	end
+	if #types == 0 then types = { sgs.Card_TypeBasic } end
+	for _, card in sgs.qlist(self.player:getHandcards()) do
+		for _, cardtype in ipairs(types) do
+			if card:getTypeId() == cardtype then return "$" .. card:getEffectiveId() end
+		end
+	end
+	return "$" .. self.player:handCards():first()
+end
+sgs.ai_skill_cardask["@yuce-discard"] = function(self, data, pattern, target)
+	if target and self:isFriend(target) then return "." end
+	local types = pattern:split("|")[1]:split(",")
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	self:sortByUseValue(cards)
+	for _, card in ipairs(cards) do
+		if not self:isValuableCard(card) then
+			for _, classname in ipairs(types) do
+				if card:isKindOf(classname) then return "$" .. card:getEffectiveId() end
+			end
+		end
+	end
+	return "."
+end
+sgs.ai_damage_effect.yuce = function(self, damage)
+	local to = damage.to
+	local from = damage.from
+	local damagecount = damage.damage or 1
+	if to:hasShownSkill("yuce") and not to:isKongcheng() and to:getHp() > 1 then
+		if not from then return true
+        elseif self:isFriend(to, from) then return false
+        else
+            if from:objectName() ~= self.player:objectName() then
+                if from:getHandcardNum() <= 2 then return (damagecount > 1) end
+            else
+                if ((getKnownCard(to, self.player, "TrickCard", false, "h") + getKnownCard(to, self.player, "EquipCard", false, "h") < to:getHandcardNum())
+                    and (getCardsNum("TrickCard", from, self.player) + getCardsNum("EquipCard", from, self.player) < 1))
+                    or getCardsNum("BasicCard", from, self.player) < 2 then  --注意国战getCardsNum不包括装备
+                    return (damagecount > 1)  --原来是return false
+                end
+            end
+        end
+    end
+	return true
+end
+function sgs.ai_cardneed.yuce(to, card)
+	return to:getCards("h"):length() == 0
 end
