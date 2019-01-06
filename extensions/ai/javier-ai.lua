@@ -6175,7 +6175,7 @@ sgs.ai_skill_use["@@xunxian"] = function(self, prompt)
 	if not need_card then
 		for _, card in pairs(cards) do
 			if card:getSuit() == suit and card:getId() ~= card_id then 
-				if not self:isWeak(source) or (self:isWeak(source) and (self:getCardsNum(usecard:objectName()) > 1 or (self:getCardsNum(usecard:objectName()) == 1 
+				if (not self:isWeak(source) and self.player:getHandcardNum() > self.player:getMaxCards()) or (self:isWeak(source) and (self:getCardsNum(usecard:objectName()) > 1 or (self:getCardsNum(usecard:objectName()) == 1 
 					and self:getUseValue(usecard) < 5))) then
 					need_card = card:getEffectiveId()
 					break
