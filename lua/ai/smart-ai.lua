@@ -4717,6 +4717,9 @@ function SmartAI:hasTrickEffective(card, to, from)
 		elseif self:isEnemy(to) then return false
 		end
 	end
+	if to:hasShownSkill("qianjie") and (card:isKindOf("SupplyShortage") or card:isKindOf("Indulgence") or card:isKindOf("IronChain")) then
+		return false
+	end
 	local liyan = sgs.findPlayerByShownSkillName("duliang")
 	if liyan and liyan:inFormationRalation(to) and (card:isKindOf("Dismantlement") or card:isKindOf("SupplyShortage")) then return false end
 	if card:isKindOf("IronChain") and not to:canBeChainedBy(from) then return false end

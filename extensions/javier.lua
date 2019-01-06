@@ -60,6 +60,7 @@ tadun = sgs.General(extension, "tadun", "qun", "4")
 dongbai = sgs.General(extension, "dongbai", "qun", "3")
 liufeng = sgs.General(extension, "liufeng", "shu", "4")
 sunluban = sgs.General(extension, "sunluban", "wu", "3", false)
+lukang = sgs.General(extension, "lukang", "wu", "3")
 
 lord_sunquan = sgs.General(extension, "lord_sunquan$", "wu", 4, true, true)
 lord_caocao = sgs.General(extension, "lord_caocao$", "wei", 4, true, true)
@@ -148,6 +149,249 @@ end
 
 --**********智包**********-----
 
+-----陆抗-----
+
+qianjie = sgs.CreateTriggerSkill{
+	name = "qianjie",
+	frequency = sgs.Skill_Frequent,
+	events = {sgs.TargetConfirmed, sgs.ChainStateChanged},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		if event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if not use.to:contains(player) then return "" end
+			if use.card:isKindOf("TrickCard") and not use.card:isNDTrick() then
+				return self:objectName()
+			end
+		elseif event == sgs.ChainStateChanged then
+			return self:objectName()
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data,ask_who)
+		if not player:hasShownSkill(self:objectName()) and room:askForSkillInvoke(player,self:objectName(),data) then
+			return true
+		end
+		if player:hasShownSkill(self:objectName()) then
+			room:notifySkillInvoked(player, self:objectName())
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		if event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			local _ids = sgs.IntList()
+			_ids:append(use.card:getId())
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DISCARD, use.to:first():objectName(), self:objectName(), "")
+			local moves = sgs.CardsMoveList()
+			local move = sgs.CardsMoveStruct(_ids, use.to:first(), nil, sgs.Player_PlaceJudge, sgs.Player_DiscardPile, reason)
+			moves:append(move)
+			--room:moveCardsAtomic(moves, true)
+			room:moveCards(move, true, false)
+			room:setEmotion(player, "cancel")
+		else
+			room:setPlayerProperty(player, "chained", sgs.QVariant(false))
+			room:setEmotion(player, "cancel")
+			return true
+		end
+		return false
+	end
+}
+jueyanCard = sgs.CreateSkillCard{
+	name = "jueyanCard",
+	skill_name = "jueyan",
+	mute = true,
+	target_fixed = true,
+	on_use = function(self, room, source, targets)
+		local list_str = source:property("jueyanProp"):toString()
+		if list_str == "" or list_str == nil then
+			list_str = "jueyan1+jueyan2+jueyan3+jueyan4+jueyan5+jueyanCancel"
+		end
+		local list = list_str:split("+")
+		local choice = room:askForChoice(source, "jueyan", list_str)
+		if choice == "jueyan1" then
+			source:drawCards(3)
+			source:gainMark("@shangxianjiayi", 3)
+			room:setPlayerCardLimitation(source, "use", ".|heart", false)
+			table.removeOne(list, "jueyan1")
+		elseif choice == "jueyan2" then
+			source:gainMark("@extraSlashTimes", 3)
+			room:setPlayerCardLimitation(source, "use", ".|diamond", false)
+			table.removeOne(list, "jueyan2")
+		elseif choice == "jueyan3" then
+			source:gainMark("@infinite")
+			room:addPlayerMark(source, "jueyanInfinite")
+			for _, p in sgs.qlist(room:getAlivePlayers()) do 
+				room:addPlayerMark(p, "Armor_Nullified")
+			end
+			room:setPlayerCardLimitation(source, "use", ".|spade", false)
+			table.removeOne(list, "jueyan3")
+		elseif choice == "jueyan4" then
+			if not source:isWounded() then 
+				choice = "jueyanCancel"
+			else
+				local recover = sgs.RecoverStruct()
+				recover.who = source
+				recover.recover = 1
+				room:recover(source, recover)
+				room:setPlayerCardLimitation(source, "use", ".|club", false)
+				table.removeOne(list, "jueyan4")
+			end
+		elseif choice == "jueyan5" then
+			room:acquireSkill(source,"jizhi")
+			room:addPlayerMark(source, "jueyanJizhi")
+			room:setPlayerCardLimitation(source, "use", "EquipCard", false)
+			table.removeOne(list, "jueyan5")
+		end
+		if choice ~= "jueyanCancel" then
+			room:setPlayerProperty(source, "jueyanProp", sgs.QVariant(table.concat(list, "+")))
+			room:addPlayerMark(source, "jueyanInvoked")
+			room:broadcastSkillInvoke("jueyan")
+		end
+		if #list <= 2 then
+			room:acquireSkill(source,"poshi")
+			room:acquireSkill(source,"huairou")
+			room:detachSkillFromPlayer(source, "jueyan")
+		end
+		return false 
+	end,
+}
+jueyan = sgs.CreateZeroCardViewAsSkill{
+	name = "jueyan",
+	view_as = function(self) 
+		local card = jueyanCard:clone()
+		card:setShowSkill(self:objectName())
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("jueyanInvoked") == 0
+	end
+}
+jueyanClear = sgs.CreateTriggerSkill{
+	name = "#jueyanClear",
+	global = true,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseEnd},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		if player:getPhase() ~= sgs.Player_Finish then return "" end
+		room:removePlayerMark(player, "jueyanInvoked")
+		room:removePlayerCardLimitation(player, "use", "EquipCard")
+		room:removePlayerCardLimitation(player, "use", ".|heart")
+		room:removePlayerCardLimitation(player, "use", ".|diamond")
+		room:removePlayerCardLimitation(player, "use", ".|spade")
+		room:removePlayerCardLimitation(player, "use", ".|club")
+		if player:getMark("jueyanJizhi") > 0 then
+			room:detachSkillFromPlayer(player,"jizhi")
+		end
+		if player:getMark("jueyanInfinite") > 0 then
+			for _, p in sgs.qlist(room:getAlivePlayers()) do 
+				room:removePlayerMark(p, "Armor_Nullified")
+			end
+		end
+		room:setPlayerMark(player, "jueyanJizhi", 0)
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		return false
+	end
+}
+poshi = sgs.CreateTriggerSkill{
+	name = "poshi",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() or not player:hasSkill(self:objectName()) then return "" end
+		if player:getPhase() == sgs.Player_Start and player:getHp() == 1 then
+			return self:objectName()
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		local to = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), self:objectName().."-invoke", true, true)
+		if to then
+			local data = sgs.QVariant()
+			data:setValue(to)
+			room:setPlayerProperty(player, "poshiProp", data)
+			return true
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		room:broadcastSkillInvoke(self:objectName())
+		local to = player:property("poshiProp"):toPlayer()
+		room:setPlayerProperty(player, "poshiProp", sgs.QVariant())
+		if to then
+			local num = to:getMaxHp() - to:getHandcardNum()
+			if num > 0 then
+				to:drawCards(num)
+			end
+		end
+		return false
+	end
+}
+huairouCard = sgs.CreateSkillCard{
+	name = "huairouCard",
+	skill_name = "huairou",
+	will_throw = false,
+	handling_method = sgs.Card_MethodNone,
+	filter = function(self, targets, to_select, player)
+		local card = sgs.Sanguosha:getCard(self:getSubcards():first())
+		local can_choose = false 
+		if card:isKindOf("Weapon") and not to_select:getEquip(0) then can_choose = true
+		elseif card:isKindOf("Armor") and not to_select:getEquip(1) then can_choose = true
+		elseif card:isKindOf("DefensiveHorse") and not to_select:getEquip(2) then can_choose = true
+		elseif card:isKindOf("OffensiveHorse") and not to_select:getEquip(3) then can_choose = true
+		elseif card:isKindOf("Treasure") and not to_select:getEquip(4) then can_choose = true
+		end
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and can_choose
+	end,
+	feasible = function(self, targets)
+		return #targets <= 1
+	end,
+	on_use = function(self, room, source, targets)
+		if #targets == 0 then
+			room:throwCard(self, source)
+		elseif #targets == 1 then
+			local to = targets[1]
+			local use = sgs.CardUseStruct()
+			use.card = sgs.Sanguosha:getCard(self:getSubcards():first())
+			use.from = to
+			use.to:append(to)
+			room:useCard(use)
+		end
+		source:drawCards(1)
+		return false
+	end
+}
+huairou = sgs.CreateOneCardViewAsSkill{
+	name = "huairou",
+	filter_pattern = "EquipCard",
+	view_as = function(self, originalCard)
+		local card = huairouCard:clone()
+		card:addSubcard(originalCard)
+		card:setSkillName(self:objectName())
+		card:setShowSkill(self:objectName())
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#huairouCard")
+	end
+}
+lukang:addSkill(qianjie)
+lukang:addSkill(jueyan)
+lukang:addSkill(jueyanClear)
+extension:insertRelatedSkills("jueyan","#jueyanClear")
+local skills = sgs.SkillList()
+if not sgs.Sanguosha:getSkill("poshi") then skills:append(poshi) end
+if not sgs.Sanguosha:getSkill("huairou") then skills:append(huairou) end
+sgs.Sanguosha:addSkills(skills)
+
 -----孙鲁班-----
 
 jiaojin = sgs.CreateTriggerSkill{
@@ -165,7 +409,7 @@ jiaojin = sgs.CreateTriggerSkill{
 		elseif event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Finish then
 			room:setPlayerFlag(room:getCurrent(), "-jiaojinFlag")
 		end
-	return ""
+		return ""
 	end,
 	on_cost = function(self, event, room, player, data, ask_who)
 		if player:askForSkillInvoke(self:objectName(), data) then
@@ -198,7 +442,7 @@ zenhuiCard = sgs.CreateSkillCard{
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
 	filter = function(self, targets, to_select, player)
-		return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1752,6 +1996,7 @@ denglou = sgs.CreateTriggerSkill{
 			if player:hasSkill("qiai") and player:getMark("@ai") == 0 then player:gainMark("@ai") end
 			if player:hasSkill("fencheng") and player:getMark("@burn") == 0 then player:gainMark("@burn") end
 			if player:hasSkill("yaowu") and player:getMark("@yaowu") == 0 then player:gainMark("@yaowu") end
+			if player:hasSkill("xianzhou") and player:getMark("@xianzhou") == 0 then player:gainMark("@xianzhou") end
 			player:loseAllMarks("@lou")
 		end
 		return false
@@ -6328,7 +6573,8 @@ duliang = sgs.CreateTriggerSkill{
 				local moves = sgs.CardsMoveList()
 				local move = sgs.CardsMoveStruct(_ids, use.to:first(), nil, sgs.Player_PlaceJudge, sgs.Player_DiscardPile, reason)
 				moves:append(move)
-				room:moveCardsAtomic(moves, true)
+				--room:moveCardsAtomic(moves, true)
+				room:moveCards(move, true, false)
 				room:setEmotion(player, "cancel")
 			else
 				room:setEmotion(player, "cancel")
@@ -10657,6 +10903,8 @@ caifuren:addCompanion("caimao")
 dongbai:addCompanion("dongzhuo")
 dongbai:addCompanion("meng_dongzhuo")
 sunluban:addCompanion("quancong")
+lukang:addCompanion("luxun")
+lukang:addCompanion("meng_luxun")
 
 --**********猛包**********-----
 
@@ -11313,14 +11561,15 @@ sgs.LoadTranslationTable{
 	["jiaojin"] = "骄矜",
 	[":jiaojin"] = "一名角色的回合限一次，当你成为男性角色使用牌的目标时，你可以在牌堆中随机获得一张与此牌颜色不同的牌。",
 	["lukang"] = "陆抗",
+	["#lukang"] = "社稷之瑰宝",
 	["qianjie"] = "谦节",
-	[":qianjie"] = "锁定技，当你的武将牌横置时，或你成为非延时锦囊牌的目标时，或你成为拼点的对象时，取消之。",
+	[":qianjie"] = "锁定技，你的武将牌不能被横置。当你成为非延时锦囊牌的目标时，取消之。",
 	["jueyan"] = "决堰",
-	[":jueyan"] = "出牌阶段限一次，你可以选择一项:摸两张牌，然后此回合不能使用红桃牌；使用【杀】次数限制+3，然后此回合不能使用方片牌；此回合距离无限，且不能使用黑桃牌；回复一点体力，且此回合不能使用梅花牌；本回合获得技能“集智”，且此回合不能使用装备牌。（每个选项只能选择一次，若已有四个选项被选择，你失去此技能，获得技能“破势”和“怀柔”。",
+	[":jueyan"] = "出牌阶段限一次，你可以选择一项（每个选项只能选择一次）:摸三张牌，此回合手牌上限+3，且不能使用红桃牌；使用【杀】次数限制+3，然后此回合不能使用方片牌；此回合距离无限，无视所有角色的防具，且不能使用黑桃牌；回复一点体力，且此回合不能使用梅花牌；本回合获得技能“集智”，且此回合不能使用装备牌。然后若已有四个选项被选择，你失去此技能，获得技能“破势”和“怀柔”。<br /><font color=\"pink\">破势：你的回合开始时，若你的体力值为1，你可以令一名角色将手牌数补至体力上限。</font><br /><font color=\"pink\">怀柔：出牌阶段限一次，你可以弃置一张装备牌或将一张装备牌置于一名其他角色的装备区，然后你摸一张牌。</font>",
 	["poshi"] = "破势",
 	[":poshi"] = "你的回合开始时，若你的体力值为1，你可以令一名角色将手牌数补至体力上限。",
 	["huairou"] = "怀柔",
-	[":huairou"] = "出牌阶段，你可以重铸装备牌。",
+	[":huairou"] = "出牌阶段限一次，你可以弃置一张装备牌或将一张装备牌置于一名其他角色的装备区，然后你摸一张牌。",
 	--加强包--
 	["lizhan"] = "励战",
 	[":lizhan"] = "副将技，此武将牌上单独的阴阳鱼个数-1，回合结束时，你可以令任意名已受伤的角色摸一张牌。",
@@ -11538,6 +11787,7 @@ sgs.LoadTranslationTable{
 	["@yingshiGet-card"] = "你可以获得其中一张“酬”",
 	["yingshi-invoke"] = "你可以指定1~2名角色，发动“应势”",
 	["@andong-card"] = "你可以选择其中一张牌，当作“酬”",
+	["poshi-invoke"] = "你可以指定一名角色将其手牌补至体力上限",
 	--猛包--
 	["@chongzhen1"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】不可被闪避",
 	["@chongzhen2"] = "你可以弃置一张比该【杀】点数大的基本牌,令此【杀】对你无效",
@@ -11581,6 +11831,12 @@ sgs.LoadTranslationTable{
 	["qixing#down"] = "手牌",
 	["andongY"] = "免疫伤害，该回合手牌上限+1",
 	["andongN"] = "令其观看手牌，并将其中一张牌当作“酬”",
+	["jueyan1"] = "摸三张牌，此回合手牌上限+3，不能使用红桃牌",
+	["jueyan2"] = "使用【杀】的额定次数+3，此回合不能使用方片牌",
+	["jueyan3"] = "距离无限，此回合不能使用黑桃牌",
+	["jueyan4"] = "回复一点体力，此回合不能使用梅花牌",
+	["jueyan5"] = "此回合获得技能“集智”，不能使用装备牌",
+	["jueyanCancel"] = "取消",
 -----move-----
 	["zongxuan#up"] = "弃置",
 	["zongxuan#down"] = "置于牌堆顶",
