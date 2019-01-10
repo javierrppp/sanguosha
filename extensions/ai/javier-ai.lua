@@ -8803,3 +8803,180 @@ sgs.ai_skill_use_func["#huairouCard"] = function(card, use, self)
 		use.card = huairou
 	end
 end
+
+-----严颜-----
+sgs.ai_skill_invoke.juzhan = function(self, data)
+	self.room:getThread():delay(1500)
+	return true
+end
+
+-----嵇康-----
+sgs.ai_skill_cardask["@qingxian"] = function(self, data, pattern, target, target2)
+    local room = self.player:getRoom()
+	local equips = self.player:getEquips()
+	for _, card in sgs.qlist(self.player:getHandcards()) do
+		if card:isKindOf("EquipCard") then
+			equips:append(card)
+		end
+	end
+	cards = sgs.QList2Table(equips)
+	self:sortByUseValue(cards, true)
+	for _,card in pairs(cards) do
+		return card:toString()
+	end
+	return nil
+end
+sgs.ai_skill_playerchosen.qingxianDamageYang = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.friends, "hp")
+	for _, p in pairs(self.friends_noself) do 
+		if targets:contains(p) then
+			return p 
+		end
+	end
+	return nil
+end
+sgs.ai_skill_playerchosen.qingxianDamageYin = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.enemies, "hp")
+	for _, p in pairs(self.enemies) do 
+		if targets:contains(p) then
+			return p 
+		end
+	end
+	return nil
+end
+sgs.ai_skill_playerchosen.qingxianRecoverYang = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.friends, "hp")
+	local need_target
+	local value = 999
+	for _, p in pairs(self.friends) do 
+		if targets:contains(p) then
+			local num = p:getHp() * 2 + p:getHandcardNum() + p:getEquips():length()
+			if num < value then
+				value = num 
+				need_target = p 
+			end
+		end
+	end
+	if need_target then
+		return need_target
+	end
+	if #self.enemies > 0 then
+		return self.friends[1]
+	end
+	return nil
+end
+sgs.ai_skill_playerchosen.qingxianRecoverYin = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.enemies, "hp")
+	local need_target
+	local value = 999
+	for _, p in pairs(self.enemies) do 
+		if targets:contains(p) then
+			local num = p:getHp() * 2 + p:getHandcardNum() + p:getEquips():length()
+			if num < value and p:getHandcardNum() + p:getEquips():length() >= 2 then
+				value = num 
+				need_target = p 
+			end
+		end
+	end
+	if need_target then
+		return need_target
+	end
+	if #self.enemies > 0 then
+		return self.enemies[1]
+	end
+	return nil
+end
+sgs.ai_skill_playerchosen.hexian = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.friends, "hp")
+	local maxNum = 0
+	local to 
+	for _, p in pairs(self.friends_noself) do 
+		if targets:contains(p) then
+			return p 
+		end
+	end
+	return nil
+end
+sgs.ai_skill_playerchosen.liexian = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.enemies, "hp")
+	local need_target
+	local value = 999
+	for _, p in pairs(self.enemies) do 
+		if targets:contains(p) then
+			local num = p:getHp() * 2 + p:getHandcardNum() + p:getEquips():length()
+			if num < value and p:getHandcardNum() + p:getEquips():length() >= 2 then
+				value = num 
+				need_target = p 
+			end
+		end
+	end
+	if need_target then
+		return need_target
+	end
+	if #self.enemies > 0 then
+		return self.enemies[1]
+	end
+	return nil
+end
+sgs.ai_skill_playerchosen.rouxian = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.friends, "hp")
+	local need_target
+	local value = 999
+	for _, p in pairs(self.friends) do 
+		if targets:contains(p) then
+			local num = p:getHp() * 2 + p:getHandcardNum() + p:getEquips():length()
+			if num < value then
+				value = num 
+				need_target = p 
+			end
+		end
+	end
+	if need_target then
+		return need_target
+	end
+	if #self.friends > 0 then
+		return self.friends[1]
+	end
+	return nil
+end
+sgs.ai_skill_invoke.jixian = function(self, data)
+	local room = self.room
+	local to 
+	local toObjectName = data:toString():split(":::")[2]
+	for _, p in sgs.qlist(room:getAlivePlayers()) do 
+		if p:objectName() == toObjectName then
+			to = p
+		end
+	end
+	if self:isEnemy(to) then 
+		return true
+	end
+	return false
+end
+sgs.ai_skill_playerchosen.juexiang = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.friends, "hp", false)
+	local maxNum = 0
+	local to 
+	for _, p in pairs(self.friends_noself) do 
+		if targets:contains(p) then
+			return p 
+		end
+	end
+	return nil
+end

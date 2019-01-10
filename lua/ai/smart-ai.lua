@@ -3752,6 +3752,9 @@ function SmartAI:damageIsEffective_(damageStruct)
 		if self:getCardsNum("Peach") > 0 and to:getHp() > 1 then return false end
 		if from:hasSkill("tusha") and not to:isWounded() then return true end
 	end--]]
+	if from:getMark("@juzhanFromMark") > 0 and to:getMark("@juzhanToMark") > 0 then 
+		return false
+	end
 	if to:getMark("@fu") > 0 then
 		local xizhicai = sgs.findPlayerByShownSkillName("xianfu")
 		if self:isFriend(from, xizhicai) and self:isWeak(xizhicai) then

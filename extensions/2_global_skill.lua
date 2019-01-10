@@ -45,6 +45,41 @@ extraSlashClear = sgs.CreateTriggerSkill{
 		return false
 	end
 }
+initYinYangMark = sgs.CreateTriggerSkill{
+	name = "initYinYangMark",
+	global = true,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.GameStart, sgs.EventAcquireSkill, sgs.CardsMoveOneTime},
+	can_trigger = function(self, event, room, player, data)
+		local skill_table = {"juzhan"}
+		--if event == sgs.GameStart then
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:getMark("@yang") == 0 and p:getMark("@yin") == 0 then
+					p:gainMark("@yang")
+				end
+				--[[local has = false
+				for _, skill in pairs(skill_table) do
+					if p:hasSkill("juzhan") then
+						has = true
+					end
+				end
+				if has then
+				sendMsg(room,"efefw")
+					initYinYangMark(p)
+				end--]]
+			end
+		--elseif event == sgs.EventAcquireSkill and table.contains(skill_table, data:toString()) then
+			--initYinYangMark(player)
+		--end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		return false
+	end
+}
 local skillList = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("fengkuang_maxCard") then
 skillList:append(fengkuang_maxCard)
@@ -54,5 +89,8 @@ skillList:append(extraSlashParams)
 end
 if not sgs.Sanguosha:getSkill("extraSlashClear") then
 skillList:append(extraSlashClear)
+end
+if not sgs.Sanguosha:getSkill("initYinYangMark") then
+skillList:append(initYinYangMark)
 end
 sgs.Sanguosha:addSkills(skillList)	
