@@ -3748,6 +3748,13 @@ function SmartAI:damageIsEffective_(damageStruct)
 		damage = damage - 1
 		if damage < 1 then return false end
 	end--]]
+	--[[if to:hasShownSkill("andong") then 
+		if self:getCardsNum("Peach") > 0 and to:getHp() > 1 then return false end
+		if from:hasSkill("tusha") and not to:isWounded() then return true end
+	end--]]
+	if from:getMark("@juzhanFromMark") > 0 and to:getMark("@juzhanToMark") > 0 then 
+		return false
+	end
 	if to:getMark("@fu") > 0 then
 		local xizhicai = sgs.findPlayerByShownSkillName("xianfu")
 		if self:isFriend(from, xizhicai) and self:isWeak(xizhicai) then
@@ -4712,6 +4719,9 @@ function SmartAI:hasTrickEffective(card, to, from)
 		if self:isFriend(to) then return true
 		elseif self:isEnemy(to) then return false
 		end
+	end
+	if to:hasShownSkill("qianjie") and (card:isKindOf("SupplyShortage") or card:isKindOf("Indulgence") or card:isKindOf("IronChain")) then
+		return false
 	end
 	local liyan = sgs.findPlayerByShownSkillName("duliang")
 	if liyan and liyan:inFormationRalation(to) and (card:isKindOf("Dismantlement") or card:isKindOf("SupplyShortage")) then return false end

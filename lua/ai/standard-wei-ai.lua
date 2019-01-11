@@ -144,7 +144,20 @@ sgs.ai_skill_cardask["@guicai-card"] = function(self, data)
 	for _, id in sgs.qlist(self.player:getHandPile()) do
 		table.insert(cards, 1, sgs.Sanguosha:getCard(id))
 	end
-	if judge.reason == "tieqi" then
+	for _, card in pairs(cards) do
+		if not card:isKindOf("Peach") then
+			if self:isEnemy(judge.who) and judge:isGood() then
+				if not judge:isGood(card) then
+					return card:toString()
+				end
+			elseif self:isFriend(judge.who) and not judge:isGood() then
+				if judge:isGood(card) then
+					return card:toString()
+				end
+			end
+		end
+	end
+	--[[if judge.reason == "tieqi" then
 		local target
 		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
 			if p:hasFlag("TieqiTarget") then target = p break end
@@ -162,10 +175,12 @@ sgs.ai_skill_cardask["@guicai-card"] = function(self, data)
 
 	if self:needRetrial(judge) then
 		local card_id = self:getRetrialCardId(cards, judge)
+			self:log("card_id"..card_id)
 		if card_id ~= -1 then
+			self:log("card_id2"..card_id)
 			return "$" .. card_id
 		end
-	end
+	end--]]
 
 	return "."
 end

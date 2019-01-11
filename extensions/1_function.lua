@@ -7,6 +7,56 @@ function idToCard(ids)
 	end
 	return cards
 end
+--实际目标数（人头数）
+function getEffectiveTargetNum(targets)
+	local tab = {}
+	for _,p in sgs.qlist(targets) do
+		if p:isAlive() and not table.contains(tab, p) then
+			table.insert(tab, p)
+		end
+	end
+	return #tab
+end
+--获取一名玩家的装备数
+function getEquipsNum(player)
+	local num = player:getEquips():length()
+	for _, card in sgs.qlist(player:getHandcards()) do
+		if card:isKindOf("EquipCard") then
+			num = num + 1
+		end
+	end
+	return num
+end
+--获取一名玩家的随机装备
+function getRandomEquip(player)
+	local equips = player:getEquips()
+	for _, card in sgs.qlist(player:getHandcards()) do
+		if card:isKindOf("EquipCard") then
+			equips:append(card)
+		end
+	end
+	return equips:at(math.random(0, equips:length() - 1))
+end
+function changeYinYangState(player)
+	if player:getMark("@yin") > 0 then
+		player:loseMark("@yin")
+		player:gainMark("@yang")
+		player:getRoom():setEmotion(player, "yin_to_yang")
+	elseif player:getMark("@yang") > 0 then
+		player:loseMark("@yang")
+		player:gainMark("@yin")
+		player:getRoom():setEmotion(player, "yang_to_yin")
+	end
+end
+function isYin(player)
+	return player:getMark("@yin") > 0
+end
+function isYang(player)
+	return player:getMark("@yang") > 0
+end
+function initYinYangMark(player)
+	player:gainMark("@yang")
+end
 function FakeMove(ids, movein, player)  --假移动
 	local room = player:getRoom()
 	if movein then
