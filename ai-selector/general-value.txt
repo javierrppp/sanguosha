@@ -151,3 +151,5 @@ dongbai								7
 liufeng								8
 lukang								8
 yanyan								7
+jikang								9
+yanbaihu								7

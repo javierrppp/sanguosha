@@ -1017,6 +1017,7 @@ sgs.LoadTranslationTable{
 	["$benzhi1"] = "江夏冲要之地，孩儿愿往守之。",
 	["$benzhi2"] = "皇叔勿惊，吾与关将军已到。",
 	["#wenji_ask_card"] = "问计",
+	["@wenji-card"] = "你可以将一张牌交给%src",
 	
 	["huangquan_shu"] = "黄权",
 	["huangquan_wei"] = "黄权",

@@ -8142,15 +8142,6 @@ sgs.ai_skill_playerchosen.xiansi = function(self)
 	local crossbow_effect
 	
 	local isHuashen = false
-	--[[if self.player:hasShownSkill("huashen") then
-		local huashens = self.player:getTag("Huashens"):toList()
-		for _, q in sgs.qlist(huashens) do
-			if sgs.Sanguosha:getGeneral(q:toString()) and sgs.Sanguosha:getGeneral(q:toString()):hasSkill("xiansi") then
-				isHuashen = true
-				break
-			end
-		end
-	end]]
 	if not isHuashen then
 		for _, enemy in ipairs(self.enemies) do
 			if enemy:inMyAttackRange(self.player) or (self:hasCrossbowEffect(enemy) or getKnownCard(enemy, self.player, "Crossbow") > 0) then  --防止敌人裸模武器然后突突突
@@ -8979,4 +8970,122 @@ sgs.ai_skill_playerchosen.juexiang = function(self, targets)
 		end
 	end
 	return nil
+end
+
+-----董白-----
+sgs.ai_skill_invoke.xiahui = function(self, data)
+	return true
+end
+sgs.ai_use_value.lianzhuCard = 6
+sgs.ai_use_priority.lianzhuCard = 6
+local lianzhu_skill = {}
+lianzhu_skill.name = "lianzhu"
+table.insert(sgs.ai_skills, lianzhu_skill)
+lianzhu_skill.getTurnUseCard = function(self)
+	if self.player:hasUsed("#lianzhuCard") or self.player:isNude() then return end
+	return sgs.Card_Parse("#lianzhuCard:.:&lianzhu")
+end
+sgs.ai_skill_use_func["#lianzhuCard"] = function(card, use, self)
+	local room = self.room
+	self:sort(self.enemies, "handcard", false)
+	local to
+	for _, p in pairs(self.enemies) do 
+		if p:objectName() == self.player:objectName() then continue end
+		if p:hasShownOneGeneral() then 
+			to = p 
+			break
+		end
+	end
+	if not to then
+		for _, p in pairs(self.enemies) do 
+			if p:objectName() == self.player:objectName() then continue end
+			to = p 
+			break
+		end
+	end
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards,true)
+	local need_card = nil
+	for _, c in pairs(cards) do
+		if c:isBlack() then
+			need_card = c:getEffectiveId()
+			break
+		end
+	end
+	if to and need_card then
+		use.card = sgs.Card_Parse("#lianzhuCard:"..need_card..":&lianzhu")
+		local targets = sgs.SPlayerList()
+		targets:append(to)
+		if use.to then use.to = targets end
+	end
+end	
+sgs.ai_skill_discard["lianzhu"] = function(self, discard_num, min_num, optional, include_equip)
+	local source = self.player
+	local room = source:getRoom()
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards,true)
+	local need_card = {}
+	for _, c in pairs(cards) do
+		if #need_card >= discard_num then break end
+		if not c:hasFlag("xiahuiCard") and not c:isKindOf("Peach") and (not c:isKindOf("Armor") or (c:isKindOf("Armor") and (c:isKindOf("Vine") or (c:isKindOf("SilverLion") and source:isWounded())))) then
+			table.insert(need_card, c:getEffectiveId())
+		end
+	end
+	if #need_card == discard_num then
+		return need_card
+	end
+	return {}
+end
+
+-----严白虎-----
+sgs.ai_use_value.zhidaoCard = 6
+sgs.ai_use_priority.zhidaoCard = 6
+local zhidao_skill = {}
+zhidao_skill.name = "zhidao"
+table.insert(sgs.ai_skills, zhidao_skill)
+zhidao_skill.getTurnUseCard = function(self)
+	if self.player:hasUsed("#zhidaoCard") or self.player:isNude() then return end
+	return sgs.Card_Parse("#zhidaoCard:.:&zhidao")
+end
+sgs.ai_skill_use_func["#zhidaoCard"] = function(card, use, self)
+	local room = self.room
+	if self.player:getHp() <= 2 then
+		if self:getCardsNum("Jink") > 1 or 
+			(self:getCardsNum("Jink") == 0 and self.player:getHp() == 2 and self.player:getEquip(1) and self.player:getEquip(1):isKindOf("EightDiagram")) or
+			(self:getCardsNum("Jink") == 1 and self.player:getHp() == 1 and self.player:getEquip(1) and self.player:getEquip(1):isKindOf("EightDiagram")) or 
+			(self.player:getEquip(1) and self.player:getEquip(1):isKindOf("Vine")) then 
+		else
+			return
+		end
+	end
+	self:sort(self.enemies, "handcard")
+	local to
+	for _, p in pairs(self.enemies) do 
+		if p:objectName() == self.player:objectName() then continue end
+		if p:getHandcardNum() > 0 then 
+			if self.player:getHp() <= 2 and p:getEquip(0) and p:getEquip(0):isKindOf("Axe") and p:getHandcardNum() + p:getEquips():length() >= 3 then continue end
+			to = p 
+			break
+		end
+	end
+	if to then
+		use.card = card
+		local targets = sgs.SPlayerList()
+		targets:append(to)
+		if use.to then use.to = targets end
+	end
+end	
+sgs.ai_skill_playerchosen.jili = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.enemies, "hp", false)
+	local maxNum = 0
+	for _, p in pairs(self.enemies) do 
+		if targets:contains(p) then
+			return p 
+		end
+	end
+	return targets:first()
 end
