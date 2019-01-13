@@ -311,5 +311,6 @@ sgs.LoadTranslationTable{
 	["nanman-invoke"] = "你可以指定任意名其他角色，视为对指定的角色使用【南蛮入侵】",
 	
 	["nanmanxiangEffect"] = "南蛮象",
+	
 }
 return {extension}

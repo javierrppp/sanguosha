@@ -9089,3 +9089,155 @@ sgs.ai_skill_playerchosen.jili = function(self, targets)
 	end
 	return targets:first()
 end
+
+-----韩当-----
+sgs.ai_skill_invoke.xiahui = function(self, data)
+	local room = self.room
+	if room:getAlivePlayers():length() <= 4 then return true end
+	for _, p in sgs.qlist(room:getOtherPlayers(self.player)) do 
+		if self:isEnemy(p) and p:hasShownOneGeneral() then 
+			return true
+		end
+	end
+	return false
+end
+sgs.ai_use_value.jiefanCard = 6
+sgs.ai_use_priority.jiefanCard = 6
+local jiefan_skill = {}
+jiefan_skill.name = "jiefan"
+table.insert(sgs.ai_skills, jiefan_skill)
+jiefan_skill.getTurnUseCard = function(self)
+	if self.player:hasUsed("#jiefanCard") or self.player:isNude() then return end
+	return sgs.Card_Parse("#jiefanCard:.:&jiefan")
+end
+sgs.ai_skill_use_func["#jiefanCard"] = function(card, use, self)
+	local room = self.room
+	self:sort(self.friends, "hp")
+	local to
+	for _, p in pairs(self.friends) do 
+		if p:getHp() == 2 and p:getAttackRange() == 2 then 
+			to = p 
+		elseif p:getHp() == 1 and p:getAttackRange() <= 2 then 
+			to = p 
+		end
+	end
+	if not to then 
+		for _, p in pairs(self.friends) do 
+			if p:getAttackRange() >= 4 and p:getHandcardNum() <= 2 then 
+				to = p 
+			end
+		end
+	end
+	if not to then 
+		for _, p in pairs(self.friends) do 
+			if p:getAttackRange() == 3 and p:getHandcardNum() <= 1 then 
+				to = p
+			end
+		end
+	end
+	if to then
+		use.card = card
+		local targets = sgs.SPlayerList()
+		targets:append(to)
+		if use.to then use.to = targets end
+	end
+end	
+
+-----程普-----
+function sgs.ai_cardneed.lihuo(to, card, self)
+	return card:isKindOf("FireSlash")
+end
+sgs.ai_skill_invoke.lihuo = function(self, data)
+	if self.player:hasWeapon("fan") then return false end
+	if not sgs.ai_skill_invoke.fan(self, data) then return false end
+	local use = data:toCardUse()
+	for _, player in sgs.qlist(use.to) do
+		if self:isEnemy(player) and self:damageIsEffective(player, sgs.DamageStruct_Fire) and sgs.isGoodTarget(player, self.enemies, self) then
+			if player:isChained() then return self:isGoodChainTarget(player) end
+			if player:hasArmorEffect("vine") then return true end
+		end
+	end
+	return false
+end
+sgs.ai_skill_playerchosen.lihuo = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	local use = data:toCardUse()
+	for _, player in sgs.qlist(targets) do
+		if self:isEnemy(player) and self:damageIsEffective(player, sgs.DamageStruct_Fire) and sgs.isGoodTarget(player, self.enemies, self) then
+			if player:isChained() and self:isGoodChainTarget(player) then return player end
+			if player:hasArmorEffect("vine") then return player end
+		end
+	end
+	for _, player in sgs.qlist(targets) do
+		if self:isEnemy(player) then
+			return player
+		end
+	end
+	return targets:first()
+end
+sgs.ai_skill_cardask["@chunlao_invoke"] = function(self, data, pattern, target, target2)
+    local room = self.player:getRoom()
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	for _,card in pairs(cards) do
+		if not card:isKindOf("Peach") then
+			return card:toString()
+		end
+	end
+	return "."
+end
+
+-----吴懿-----
+sgs.ai_skill_invoke.benxi = function(self, data)
+	self.room:getThread():delay(700)
+	return true
+end
+sgs.ai_skill_playerchosen.benxi = function(self, targets)
+	local source = self.player
+	local room = source:getRoom()
+	self:sort(self.friends_noself, "hp")
+	local id = source:property("benxiProp"):toInt()
+	local card = sgs.Sanguosha:getCard(id)
+	if card:isKindOf("Slash") then
+		if card:isKindOf("FireSlash") then
+			for _, player in sgs.qlist(targets) do
+				if self:isEnemy(player) and self:damageIsEffective(player, sgs.DamageStruct_Fire) and sgs.isGoodTarget(player, self.enemies, self) then
+					if player:isChained() and self:isGoodChainTarget(player) then return player end
+					if player:hasArmorEffect("vine") then return player end
+				end
+			end
+		end
+		for _, player in sgs.qlist(targets) do
+			if self:isEnemy(player) then
+				return player
+			end
+		end
+	elseif card:isKindOf("Peach") then
+		for _, player in pairs(self.friends_noself) do
+			if targets:contains(player) and player:isWounded() then
+				return player
+			end
+		end
+	elseif card:isKindOf("Analeptic") then
+		for _, player in pairs(self.friends_noself) do
+			if targets:contains(player) then
+				return player
+			end
+		end
+	end
+	return nil
+end
+sgs.ai_skill_cardask["@benxi_invoke"] = function(self, data, pattern, target, target2)
+    local room = self.player:getRoom()
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	for _,card in pairs(cards) do
+		if not card:isKindOf("Peach") then
+			return card:toString()
+		end
+	end
+	return cards[1]:toString()
+end

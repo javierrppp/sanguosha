@@ -45,6 +45,38 @@ extraSlashClear = sgs.CreateTriggerSkill{
 		return false
 	end
 }
+extraDistance = sgs.CreateDistanceSkill{
+	name = "extraDistance",
+	global = true,
+	correct_func = function(self, from, to)
+		if to:getMark("@extraDefense") > 0 then
+			return to:getMark("@extraDefense")
+		end
+		if from:getMark("@extraOffense") > 0 then
+			return -from:getMark("@extraOffense")
+		end
+		return 0
+	end
+}
+extraDistanceClear = sgs.CreateTriggerSkill{
+	name = "extraDistanceClear",
+	global = true,
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseEnd},
+	can_trigger = function(self, event, room, player, data)
+		if not player or player:isDead() then return "" end
+		if player:getPhase() ~= sgs.Player_Finish then return "" end
+		player:loseAllMarks("@extraDefense")
+		player:loseAllMarks("@extraOffense")
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data,ask_who)
+		return false
+	end
+}
 initYinYangMark = sgs.CreateTriggerSkill{
 	name = "initYinYangMark",
 	global = true,
@@ -92,5 +124,11 @@ skillList:append(extraSlashClear)
 end
 if not sgs.Sanguosha:getSkill("initYinYangMark") then
 skillList:append(initYinYangMark)
+end
+if not sgs.Sanguosha:getSkill("extraDistance") then
+skillList:append(extraDistance)
+end
+if not sgs.Sanguosha:getSkill("extraDistanceClear") then
+skillList:append(extraDistanceClear)
 end
 sgs.Sanguosha:addSkills(skillList)	

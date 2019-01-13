@@ -50,7 +50,7 @@ daqiao								7
 zhouyu								7
 jiangqin							6
 chenwudongxi						6
-xusheng								5
+xusheng								6
 sunce								5
 dingfeng							5
 sunjian								4
@@ -153,3 +153,4 @@ lukang								8
 yanyan								7
 jikang								9
 yanbaihu								7
+wuyi								7
