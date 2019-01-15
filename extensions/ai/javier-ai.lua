@@ -9241,3 +9241,36 @@ sgs.ai_skill_cardask["@benxi_invoke"] = function(self, data, pattern, target, ta
 	end
 	return cards[1]:toString()
 end
+
+-----诸葛诞-----
+sgs.ai_skill_invoke.gongao = function(self, data)
+	self.room:getThread():delay(300)
+	return true
+end
+
+sgs.ai_skill_choice["jueyan"] = function(self, choices, data)
+	local room = self.room 
+	local source = self.player
+	if room:getAlivePlayers():length() <= 3 then return "gongao_recover" end
+	local player_num = room:getAlivePlayers():length()
+	local num = math.random(0, 50)
+	if player:getHandcardNum() < 3 and player_num <= 4 then 
+		if num < 10 then return "gongao_draw"
+		else return "gongao_recover"
+		end
+	elseif player:getHandcardNum() < 3 and player_num <= 5 then 
+		if num < 20 then return "gongao_draw"
+		else return "gongao_recover"
+		end
+	elseif player:getHandcardNum() < 4 and player_num <= 7 then 
+		if num < 30 then return "gongao_draw"
+		else return "gongao_recover"
+		end
+	elseif player:getHandcardNum() < 4 and player_num <= 10 then 
+		if num < 40 then return "gongao_draw"
+		else return "gongao_recover"
+		end
+	else
+		return "gongao_recover"
+	end
+end

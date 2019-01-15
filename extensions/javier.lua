@@ -3087,7 +3087,7 @@ sgs.insertRelatedSkills(extension, "huaijv", "#huaijv_dying")
 
 -----诸葛诞-----
 
-gongao = sgs.CreateTriggerSkill{
+--[[gongao = sgs.CreateTriggerSkill{
 	name = "gongao",
 	events = {sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.EventLoseSkill},
 	frequency = sgs.Skill_Compulsory,
@@ -3159,6 +3159,40 @@ gongao = sgs.CreateTriggerSkill{
 				room:moveCardTo(to_draw, player, sgs.Player_PlaceHand, reason)
 			end
 		end
+		return false
+	end
+}--]]
+gongao = sgs.CreateTriggerSkill{
+	name = "gongao",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.Death},
+	can_trigger = function(self, event, room, player, data)	
+		if player and player:isAlive() and player:hasSkill(self:objectName()) then
+			local death = data:toDeath()
+			if death.who:objectName() ~= player:objectName() then
+				return self:objectName()
+			end
+		end
+		return ""
+	end,
+	on_cost = function(self, event, room, player, data, ask_who)
+		if player:askForSkillInvoke(self:objectName(), data) then
+			room:broadcastSkillInvoke(self:objectName())
+			return true 
+		end
+		return false 
+	end,
+	on_effect = function(self, event, room, player, data, ask_who)
+		local choice = room:askForChoice(player, self:objectName(), "gongao_draw+gongao_recover")
+		if choice == "gongao_draw" then
+			player:drawCards(3)
+		else
+			room:setPlayerProperty(player, "maxhp", sgs.QVariant(player:property("maxhp"):toInt() + 1))
+			local recover = sgs.RecoverStruct()
+			room:recover(player, recover)
+			room:detachSkillFromPlayer(player,self:objectName())
+		end
+		room:broadcastSkillInvoke(self:objectName())
 		return false
 	end
 }
@@ -12648,7 +12682,8 @@ sgs.LoadTranslationTable{
 	["#zhugedan"] = "严毅威重",
 	["~zhugedan"] = "诸葛一氏定会为我复仇！",
 	["gongao"] = "功獒",
-	[":gongao"] = "锁定技，你的出牌阶段开始时，你需要将一半的手牌（向下取整）置于武将牌上，称为“功”。出牌阶段结束后，若你的手牌数大于1，你执行一个额外的出牌阶段。你的回合结束后，你获得武将牌上所有的“功”。",
+	--[":gongao"] = "锁定技，你的出牌阶段开始时，你需要将一半的手牌（向下取整）置于武将牌上，称为“功”。出牌阶段结束后，若你的手牌数大于1，你执行一个额外的出牌阶段。你的回合结束后，你获得武将牌上所有的“功”。",
+	[":gongao"] = "一名角色死亡时，你选择一项：1、摸三张牌，2、增加一点体力上限并回复一点体力。若你选择2，你失去此技能。",
 	["$gongao1"] = "恪尽职守，忠心事主。",
 	["$gongao2"] = "攻城拔寨，建功立业。",
 	["weizhong"] = "威重",
@@ -12656,6 +12691,8 @@ sgs.LoadTranslationTable{
 	["$weizhong"] = "定当夷司马氏三族！",
 	["gongaoExchange"] = "你需将 %arg 张手牌置于武将牌上",
 	["gong"] = "功",
+	["gongao_draw"] = "摸三张牌",
+	["gongao_recover"] = "增加一点体力上限，回复一点体力，失去“功獒”",
 	
 	["yanjun"] = "严畯",
 	["#yanjun"] = "贤逊曼才",
