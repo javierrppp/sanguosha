@@ -1304,7 +1304,14 @@ function SmartAI:getDynamicUsePriority(card)
 	if not card then return 0 end
 	if card:hasFlag("AIGlobal_KillOff") then return 15 end
 
+	--渐营，暂时加上
+    if self.player:getMark("JianyingSuit") == card:getSuit() + 1 and self.player:getMark("JianyingNumber") == card:getNumber() then
+        return self:getUsePriority(card) + 50
+    end
 	if card:isKindOf("Slash") then
+		if self.player:getMark("QiangwuMin") > 0 and not (card:isVirtualCard() and (card:subcardsLength() ~= 1)) and card:getNumber() > self.player:getMark("QiangwuMin") then 
+			return self:getUsePriority(card) + 2
+		end
 		for _, p in ipairs(self.friends) do
 			if p:hasShownSkill("yongjue") and self.player:isFriendWith(p) then return 12 end
 		end
