@@ -174,3 +174,10 @@ wangcan liru									18 18
 wangcan mateng									21 21
 jikang xizhicai									25 25
 huangyueyin wuyi									23 23
+zhugedan caopi									15 15
+zhangchunhua zhugedan								18 18
+zhugedan	guojia									14 13
+zhangxingcai liushan									16 15
+zhangxingcai huangyueyin								15 14
+zhangxingcai liubei									13 12
+zhangxingcai xiahoushi								5 4

@@ -197,21 +197,21 @@ function setInitialTables()
 	sgs.lose_equip_skill = "xiaoji"
 	sgs.lose_one_equip_skill = ""
 	sgs.need_kongcheng = "kongcheng"
-	sgs.masochism_skill =       "yiji|fankui|jieming|ganglie|fangzhu|hengjiang|qianhuan"
-	sgs.wizard_skill =      "guicai|guidao|tiandu|tiandu_xizhicai|shaluTiandu"
-	sgs.wizard_harm_skill =     "guicai|guidao"
+	sgs.masochism_skill =       "yiji|fankui|jieming|ganglie|fangzhu|hengjiang|qianhuan|chengxiang|chouce|dingpin|tuifeng|quanji|hubu|Ejianxiong|qingxian|yuce|weizhong|quji|zhichi|benyu"
+	sgs.wizard_skill =      "guicai|guidao|tiandu|tiandu_xizhicai|shaluTiandu|huanshi"
+	sgs.wizard_harm_skill =     "guicai|guidao|huanshi"
 	sgs.priority_skill =        "dimeng|haoshi|qingnang|jizhi|guzheng|qixi|jieyin|guose|duanliang|fanjian|lijian|tuxi|qiaobian|zhiheng|luoshen|rende|wansha|qingcheng|shuangren"
-	sgs.save_skill =        "jijiu"
+	sgs.save_skill =        "jijiu|chunlao"
 	sgs.exclusive_skill =       "duanchang|buqu"
 	sgs.Active_cardneed_skill =     "paoxiao|tianyi|shuangxiong|jizhi|guose|duanliang|qixi|qingnang|luoyi|" ..
-								"jieyin|zhiheng|rende|luanji|qiaobian|lirang"
+								"jieyin|zhiheng|rende|luanji|qiaobian|lirang|qizhi|shenduan|yingyuan|danshou|qiangwu"
 	sgs.notActive_cardneed_skill =      "kanpo|guicai|guidao|beige|xiaoguo|liuli|tianxiang|jijiu"
 	sgs.cardneed_skill =  sgs.Active_cardneed_skill .. "|" .. sgs.notActive_cardneed_skill
 	sgs.drawpeach_skill =       "tuxi|qiaobian"
-	sgs.recover_skill =     "rende|kuanggu|zaiqi|jieyin|qingnang|yinghun|hunzi|shenzhi|buqu"
-	sgs.use_lion_skill =         "duanliang|qixi|guidao|lijian|zhiheng|fenxun|qingcheng"
-	sgs.need_equip_skill =      "shensu|beige|huyuan|qingcheng"
-	sgs.judge_reason =      "bazhen|EightDiagram|supply_shortage|tuntian|qianxi|indulgence|lightning|leiji|tieqi|luoshen|ganglie"
+	sgs.recover_skill =     "rende|kuanggu|zaiqi|jieyin|qingnang|yinghun|hunzi|shenzhi|buqu|ziyuan|chunlao|jiefan"
+	sgs.use_lion_skill =         "duanliang|qixi|guidao|lijian|zhiheng|fenxun|qingcheng|shenduan"
+	sgs.need_equip_skill =      "shensu|beige|huyuan|qingcheng|xianzhou"
+	sgs.judge_reason =      "bazhen|EightDiagram|supply_shortage|tuntian|qianxi|indulgence|lightning|leiji|tieqi|luoshen|ganglie|dingpin|juexiang|chouce"
 
 	sgs.Friend_All = 0
 	sgs.Friend_Draw = 1
@@ -3528,6 +3528,7 @@ function SmartAI:canRetrial(player, to_retrial, reason)
 		if blackequipnum + player:getHandcardNum() > 0 then return true end
 	end
 	if player:hasShownSkill("guicai") and player:getHandcardNum() > 0 then return true end
+	if player:hasShownSkill("huanshi") and player:getKingdom() == to_retrial:getKingdom() and player:getRole() ~= "careerist" and to_retrial:getRole() ~= "careerist" then return true end
 	return
 end
 
@@ -4460,6 +4461,10 @@ function SmartAI:aoeIsEffective(card, to, source)
 	source = source or self.room:getCurrent()
 
 	if to:hasArmorEffect("Vine") then
+		return false
+	end
+	
+	if to:hasShownSkill("juzhan") and to:getMark("@juzhanToMark") > 0 and source:getMark("@juzhanFromMark") > 0 then
 		return false
 	end
 

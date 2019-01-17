@@ -8465,7 +8465,7 @@ end
 sgs.ai_skill_invoke.qianjie = function(self, data)
 	return true
 end
-sgs.ai_use_value.jueyanCard =20
+sgs.ai_use_value.jueyanCard = 20
 sgs.ai_use_priority.jueyanCard = 20
 local jueyan_skill = {}
 jueyan_skill.name = "jueyan"
@@ -9272,5 +9272,176 @@ sgs.ai_skill_choice["jueyan"] = function(self, choices, data)
 		end
 	else
 		return "gongao_recover"
+	end
+end
+
+-----朱然-----
+-- 胆守
+local danshou_skill = {}
+danshou_skill.name = "danshou"
+table.insert(sgs.ai_skills, danshou_skill)
+danshou_skill.getTurnUseCard = function(self)
+	if not self:willShowForAttack() then return nil end
+	local times = self.player:getMark("danshou") + 1
+	if times < self.player:getCardCount(true) then
+		return sgs.Card_Parse("#danshouCard:.:&danshou")
+	end
+end
+sgs.ai_skill_use_func["#danshouCard"] = function(card, use, self)
+	local times = self.player:getMark("danshou") + 1
+	local cards = self.player:getCards("he")
+	local jink_num = self:getCardsNum("Jink")
+	local to_discard = {}
+	for _, id in sgs.qlist(self.player:getPile("wooden_ox")) do
+		cards:append(sgs.Sanguosha:getCard(id))
+	end
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards, true)
+	local has_weapon = false
+	local DisWeapon = false
+	local DisOffensiveHorse = false
+	for _, card in ipairs(cards) do
+		if card:isKindOf("Weapon") and card:isBlack() then has_weapon = true end
+	end
+	for _, card in ipairs(cards) do
+		if self.player:canDiscard(self.player, card:getEffectiveId()) and ((self:getUseValue(card) < sgs.ai_use_value.Dismantlement + 1) or self:getOverflow() > 0) then
+			local shouldUse = true
+			if card:isKindOf("Armor") then
+				if not self.player:getArmor() then shouldUse = false
+				elseif self.player:hasEquip(card) and not (card:isKindOf("SilverLion") and self.player:isWounded()) then shouldUse = false
+				end
+			end
+			if card:isKindOf("Weapon") and self.player:getHandcardNum() > 2 then
+				if not self.player:getWeapon() then shouldUse = false
+				elseif self.player:hasEquip(card) and not has_weapon then shouldUse = false
+				else DisWeapon = true
+				end
+			end
+			if card:isKindOf("Weapon") and self.player:hasEquip(card) then  --源码漏掉的距离判断
+				DisWeapon = true
+			end
+			if card:isKindOf("OffensiveHorse") and self.player:hasEquip(card) then
+				DisOffensiveHorse = true
+			end
+			if card:isKindOf("Slash") then
+				local dummy_use = { isDummy = true }
+				if self:getCardsNum("Slash") == 1 then
+					self:useBasicCard(card, dummy_use)
+					if dummy_use.card then shouldUse = false end
+				end
+			end
+			if self:getUseValue(card) > sgs.ai_use_value.Dismantlement + 1 and card:isKindOf("TrickCard") then
+				local dummy_use = { isDummy = true }
+				self:useTrickCard(card, dummy_use)
+				if dummy_use.card then shouldUse = false end
+			end
+			if isCard("Peach", card, self.player) then
+				if times ~= 3 then shouldUse = false end
+			end
+			if isCard("Jink", card, self.player) then
+				if jink_num <= 1 and times == 1 then shouldUse = false
+				else jink_num = jink_num - 1 end
+			end
+			if shouldUse then
+				table.insert(to_discard, card:getEffectiveId())
+				if #to_discard == times then break end
+			end
+		end
+	end
+
+	local distance_fix = 0
+	if DisWeapon then distance_fix = self.player:getWeapon():getRealCard():toWeapon():getRange() - self.player:getAttackRange(false) end
+	if DisOffensiveHorse then distance_fix = distance_fix + 1 end
+	local target
+	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		if (self.player:distanceTo(p, distance_fix) <= self.player:getAttackRange()) and (self.player:distanceTo(p) ~= -1) or table.contains(self.player:property("in_my_attack_range"):toString():split("+"), p:objectName()) then  --基本来自lua中的inMyAttackRangeFromV2
+			if times == 1 or times == 2 then
+				if self.player:canDiscard(p, "he") and not p:isNude() then
+					if self:isFriend(p) then
+						if(self:hasSkills(sgs.lose_equip_skill, p) and not p:getEquips():isEmpty())
+						or (self:needToThrowArmor(p) and p:getArmor()) or self:doNotDiscard(p) then
+							target = p  break end
+					elseif self:isEnemy(p) then
+						if times == 2 and self:needToThrowArmor(p) then continue
+						elseif (not self:doNotDiscard(p) or self:getDangerousCard(p) or self:getValuableCard(p)) then
+							target = p  break end
+					end
+				end
+			elseif times == 3 then
+				if self:isEnemy(p) then
+					if self:damageIsEffective(p, nil, self.player) and not self:getDamagedEffects(p, self.player)
+					and not self:needToLoseHp(p, self.player) and ((self:isWeak(p) and p:getHp() < 3) or self:getOverflow() > 3)  then
+						target = p  break end
+				end
+			elseif times == 4 then
+				if self:isFriend(p) and p:isWounded() then
+					target = p  break end
+			end
+		end
+	end
+	if target and #to_discard == times then
+		use.card = sgs.Card_Parse("#danshouCard:" .. table.concat(to_discard, "+") .. ":&danshou")
+		if use.to then use.to:append(target) end
+		return
+	end
+end
+sgs.ai_use_priority.danshouCard = sgs.ai_use_priority.Dismantlement + 2
+sgs.ai_use_value.danshouCard = sgs.ai_use_value.Dismantlement + 1
+sgs.ai_card_intention.danshouCard = function(self, card, from, tos)
+	local num = card:subcardsLength()
+	if num == 2 or num == 3 then
+		sgs.updateIntentions(from, tos, 10)
+	elseif num == 4 then
+		sgs.updateIntentions(from, tos, -10)
+	end
+end
+sgs.ai_choicemade_filter.cardChosen.danshou = sgs.ai_choicemade_filter.cardChosen.snatch
+sgs.ai_skill_exchange.danshou = function(self, pattern, max_num, min_num, expand_pile)
+	local to_discard = {}
+	local cards = self.player:getHandcards()
+	local zhuran = sgs.findPlayerByShownSkillName("danshou")
+	cards = sgs.QList2Table(cards)
+	if self:isFriend(zhuran) then  --抄恩怨
+		for _, card in ipairs(cards) do
+			if isCard("Peach", card, zhuran) and ((not self:isWeak() and self:getCardsNum("Peach") > 0) or self:getCardsNum("Peach") > 1) then
+				table.insert(to_discard, card:getEffectiveId())
+				return to_discard
+			end
+			if isCard("Analeptic", card, zhuran) and self:getCardsNum("Analeptic") > 1 then
+				table.insert(to_discard, card:getEffectiveId())
+				return to_discard
+			end
+			if isCard("Jink", card, zhuran) and self:getCardsNum("Jink") > 1 then
+				table.insert(to_discard, card:getEffectiveId())
+				return to_discard
+			end
+		end
+	end
+	self.player:setFlags("Global_AIDiscardExchanging")  --v2中exchange就是用discard进行的
+	local to_exchange = self:askForDiscard("danshou", 1, 1, false, true)
+	self.player:setFlags("-Global_AIDiscardExchanging")
+	return to_exchange
+end
+
+-----张星彩-----
+
+sgs.ai_skill_invoke.shenxian = function(self, data)
+	self.room:getThread():delay(300)
+	return true
+end
+sgs.ai_use_value.qiangwuCard = 8
+sgs.ai_use_priority.qiangwuCard = 8
+local qiangwu_skill = {}
+qiangwu_skill.name = "qiangwu"
+table.insert(sgs.ai_skills, qiangwu_skill)
+qiangwu_skill.getTurnUseCard = function(self)
+	if not self:willShowForAttack() then return end
+	if not self.player:hasUsed("#qiangwuCard") then
+		return sgs.Card_Parse("#qiangwuCard:.:&qiangwu")
+	end
+end
+sgs.ai_skill_use_func["#qiangwuCard"] = function(card, use, self)
+	if self:getCardsNum("Slash") > 0 then 
+		use.card = card
 	end
 end

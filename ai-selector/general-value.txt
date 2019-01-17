@@ -154,3 +154,5 @@ yanyan								7
 jikang								9
 yanbaihu								7
 wuyi								7
+zhuran								5
+zhangxingcai							7
